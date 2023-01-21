@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
             {"shaders/tracing.frag", GL_FRAGMENT_SHADER},
         });
 
-        const auto cameraRadius = 18.0f;
+        const auto cameraRadius = 15.0f;
         glm::vec3 cameraPos{0, 6, cameraRadius};
         glm::vec3 camerTarget{4, 4, 4};
         Camera camera{
