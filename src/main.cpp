@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
         }
         glfwMakeContextCurrent(window);
         glfwSwapInterval(0);
+        glfwGetInputMode(window, GLFW_STICKY_KEYS);
 
         glewExperimental = true;
         if (glewInit() != GLEW_OK) {
@@ -116,6 +117,8 @@ int main(int argc, char *argv[]) {
         double currentFrame{};
         int frameCount = 0;
 
+        bool rotate = true;
+
         while (!glfwWindowShouldClose(window)) {
             currentFrame = glfwGetTime();
             ++frameCount;
@@ -125,12 +128,16 @@ int main(int argc, char *argv[]) {
                 frameCount = 0;
                 previousFrame = currentFrame;
             }
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+                rotate = !rotate;
+            }
 
-            auto rotationSpeed = glfwGetTime();
-
-            auto camX = sin(rotationSpeed) * cameraRadius;
-            auto camZ = cos(rotationSpeed) * cameraRadius;
-            camera.position = camerTarget + glm::vec3{camX, cameraPos.y, camZ};
+            if (rotate) {
+                auto rotationSpeed = glfwGetTime();
+                auto camX = sin(rotationSpeed) * cameraRadius;
+                auto camZ = cos(rotationSpeed) * cameraRadius;
+                camera.position = camerTarget + glm::vec3{camX, cameraPos.y, camZ};
+            }
 
             auto view = calculateView(camera);
             auto projection = calculateProjection(screenWidth, screenHeight);
