@@ -3,7 +3,7 @@
 // For fixing floating point errors
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
-#define AA_SAMPLES 1
+#define AA_SAMPLES 2
 #define NUM_BOUNCES 3
 
 layout(local_size_x = 10, local_size_y = 10) in;
@@ -66,6 +66,7 @@ struct VoxelHit {
     vec3 color;
     vec3 normal;
     bool hit;
+    vec3 albedo;
 };
 
 bool inVoxelBuffer(ivec3 vx) {
@@ -88,7 +89,7 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
 
     vec3 norm;
     vec3 hitPos;
-    const int maxTrace = 100;
+    const int maxTrace = 150;
     float dist;
 
     VoxelHit hit;
@@ -97,20 +98,22 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
     for (int i = 0; i < maxTrace; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
             const float sphereRadius = 14;
-            if (length(pos - vec3(16)) < sphereRadius){//&& ivec3(pos) % 2 == 0) {
+            if (length(pos - vec3(16)) < sphereRadius && ivec3(pos) % 2 == 0) {
                 //FIXME: position is somehow not quite right, fish eye effect
                 hit.position = rayPos + dist * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
-                //hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
-                hit.color = vec3(0.2f, 0.2f, 0.2f);
+                //hit.color = vec3(0.05);
+                hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
+                hit.albedo = vec3(0.0);
                 break;
-            } else if (pos.y == 0) {
+            } else if (pos.y <= 2) {
                 //FIXME: position is somehow not quite right, fish eye effect
                 hit.position = rayPos + dist * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
-                hit.color = vec3(0.2f, 0.2f, 0.2f);
+                hit.color = vec3(0.05);
+                hit.albedo = vec3(0.5);
                 break;
             }
         }
@@ -154,6 +157,7 @@ vec3 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         // Advance ray start to box
         if (intersection.x > 0) {
             //FIXME: this makes noise glitches more visible instead of only improving performance
+            //FIXME: also glitches at the chunk borders
             //rayPos += rayDir * (intersection.x + EPSILON);
         }
 
@@ -161,17 +165,17 @@ vec3 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         vec3 color = vec3(0);
         bool wasHit = false;
 
+        vec3 attenuation = vec3(1);
         for (int depth = 0; depth < NUM_BOUNCES; ++depth) {
-            float multiplier = pow(0.5, depth);
-
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
                 wasHit = true;
-                color += multiplier * hit.color;
+                color += attenuation * hit.color;
+                attenuation = hit.albedo;
                 rayPos = hit.position;
                 rayDir = hit.normal + randomUnitVector(rngState);
             } else if (wasHit) {
-                color += multiplier * skyColor(rayPos, rayDir);
+                color += attenuation * skyColor(rayPos, rayDir);
                 return color;
             }
         }
@@ -190,14 +194,18 @@ void main() {
     ivec2 outputCoords = ivec2(gl_GlobalInvocationID.xy);
 
     uint rngState = uint(outputCoords.x) * 1973 + uint(outputCoords.y) * 9277 + frame * 26699 | 1;
-    vec2 rand = vec2(randomFloat(rngState), randomFloat(rngState));
-    vec2 screenCoords = (vec2(outputCoords) + rand) / vec2(imageSize(outputImage)) * 2 - 1;
-
     vec3 rayPos = (invView * vec4(0, 0, 0, 1)).xyz;
-    vec3 rayDir = normalize((invCenteredView * invProjection * vec4(screenCoords, 0, 1)).xyz) + EPSILON;
 
-    vec3 outputColor = traceRay(rayPos, rayDir, rngState);
-    vec3 gammaCorrectedColor = pow(outputColor, vec3(INV_GAMMA));
+    vec3 outputColor = vec3(0);
+    vec2 randomOffset = vec2(0);
+    for (int aa = 0; aa < AA_SAMPLES; ++aa) {
+        vec2 screenCoords = (vec2(outputCoords) + randomOffset) / vec2(imageSize(outputImage)) * 2 - 1;
+        vec3 rayDir = normalize((invCenteredView * invProjection * vec4(screenCoords, 0, 1)).xyz) + EPSILON;
 
+        outputColor += traceRay(rayPos, rayDir, rngState);
+        randomOffset = vec2(randomFloat(rngState), randomFloat(rngState));
+    }
+
+    vec3 gammaCorrectedColor = pow(outputColor / AA_SAMPLES, vec3(INV_GAMMA));
     imageStore(outputImage, outputCoords, vec4(gammaCorrectedColor, 1));
 }

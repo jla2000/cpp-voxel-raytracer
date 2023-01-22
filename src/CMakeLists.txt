@@ -1,10 +1,8 @@
 set(
         SOURCE_FILES
         main.cpp
-        rendering/AccelerationStructure.cpp
         rendering/Shader.cpp
         rendering/Camera.cpp
-        rendering/VoxelBuffer.cpp
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
