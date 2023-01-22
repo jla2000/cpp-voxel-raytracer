@@ -1,5 +1,6 @@
 #include <array>
 #include <iostream>
+#include <sstream>
 
 #include <gl/glew.h>
 #include <glfw/glfw3.h>
@@ -7,8 +8,8 @@
 #include "rendering/Shader.h"
 #include "rendering/Camera.h"
 
-const int screenWidth = 1000;
-const int screenHeight = 800;
+const int screenWidth = 1920;
+const int screenHeight = 1010;
 
 const std::array<GLfloat, 18> quadVertices {
     -1.0f, 1.0f, 0.0f,
@@ -93,9 +94,9 @@ int main(int argc, char *argv[]) {
 
         glClearColor(0, 1, 1, 1);
 
-        const auto cameraRadius = 40.0f;
+        const auto cameraRadius = 50.0f;
         glm::vec3 cameraPos{0, 16, cameraRadius};
-        glm::vec3 camerTarget{16, 16, 16};
+        glm::vec3 camerTarget{16, 12, 16};
         Camera camera{
                 cameraPos,
                 camerTarget
@@ -124,7 +125,10 @@ int main(int argc, char *argv[]) {
             ++frameCount;
 
             if (currentFrame - previousFrame >=  1.0) {
-                std::cout << "Fps: " << frameCount << "\n";
+                std::ostringstream oss;
+                oss << "Fps: " << frameCount << "\n";
+
+                glfwSetWindowTitle(window, oss.str().c_str());
                 frameCount = 0;
                 previousFrame = currentFrame;
             }
@@ -135,7 +139,7 @@ int main(int argc, char *argv[]) {
             if (rotate) {
                 auto rotationSpeed = glfwGetTime();
                 auto camX = sin(rotationSpeed) * cameraRadius;
-                auto camY = sin(rotationSpeed) * 20;
+                auto camY = sin(rotationSpeed) * cameraRadius / 3 + 10;
                 auto camZ = cos(rotationSpeed) * cameraRadius;
                 camera.position = camerTarget + glm::vec3{camX, camY, camZ};
             }

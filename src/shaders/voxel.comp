@@ -4,7 +4,7 @@
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
 #define AA_SAMPLES 2
-#define NUM_BOUNCES 3
+#define NUM_BOUNCES 4
 
 layout(local_size_x = 10, local_size_y = 10) in;
 layout(rgba32f, binding = 0) uniform image2D outputImage;
@@ -66,7 +66,7 @@ struct VoxelHit {
     vec3 color;
     vec3 normal;
     bool hit;
-    vec3 albedo;
+    bool metal;
 };
 
 bool inVoxelBuffer(ivec3 vx) {
@@ -94,6 +94,7 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
 
     VoxelHit hit;
     hit.hit = false;
+    hit.metal = false;
 
     for (int i = 0; i < maxTrace; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
@@ -105,15 +106,15 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
                 hit.hit = true;
                 //hit.color = vec3(0.05);
                 hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
-                hit.albedo = vec3(0.0);
+                hit.metal = true;
                 break;
             } else if (pos.y <= 2) {
                 //FIXME: position is somehow not quite right, fish eye effect
                 hit.position = rayPos + dist * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
-                hit.color = vec3(0.05);
-                hit.albedo = vec3(0.5);
+                hit.color = vec3(0.2);
+                hit.metal = true;
                 break;
             }
         }
@@ -162,7 +163,7 @@ vec3 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         }
 
         VoxelHit hit;
-        vec3 color = vec3(0);
+        vec3 color = vec3(1);
         bool wasHit = false;
 
         vec3 attenuation = vec3(1);
@@ -170,12 +171,23 @@ vec3 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
                 wasHit = true;
-                color += attenuation * hit.color;
-                attenuation = hit.albedo;
-                rayPos = hit.position;
-                rayDir = hit.normal + randomUnitVector(rngState);
+                color = color * hit.color;
+
+                if (hit.metal) {
+                    vec3 reflected = reflect(normalize(rayDir), hit.normal);
+                    if (dot(reflected, hit.normal) > 0) {
+                        rayPos = hit.position;
+                        rayDir = reflected;
+                    } else {
+                        // nothing
+                        break;
+                    }
+                } else {
+                    rayPos = hit.position;
+                    rayDir = hit.normal + randomUnitVector(rngState);
+                }
             } else if (wasHit) {
-                color += attenuation * skyColor(rayPos, rayDir);
+                color = color * skyColor(rayPos, rayDir);
                 return color;
             }
         }
@@ -197,13 +209,13 @@ void main() {
     vec3 rayPos = (invView * vec4(0, 0, 0, 1)).xyz;
 
     vec3 outputColor = vec3(0);
-    vec2 randomOffset = vec2(0);
+
     for (int aa = 0; aa < AA_SAMPLES; ++aa) {
+        vec2 randomOffset = vec2(randomFloat(rngState), randomFloat(rngState));
         vec2 screenCoords = (vec2(outputCoords) + randomOffset) / vec2(imageSize(outputImage)) * 2 - 1;
         vec3 rayDir = normalize((invCenteredView * invProjection * vec4(screenCoords, 0, 1)).xyz) + EPSILON;
 
         outputColor += traceRay(rayPos, rayDir, rngState);
-        randomOffset = vec2(randomFloat(rngState), randomFloat(rngState));
     }
 
     vec3 gammaCorrectedColor = pow(outputColor / AA_SAMPLES, vec3(INV_GAMMA));
