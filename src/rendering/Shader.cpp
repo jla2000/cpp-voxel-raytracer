@@ -35,7 +35,7 @@ Shader::Shader(const std::string &filename, GLenum type) {
         infoLog.resize(infoLogLength + 1);
 
         glGetShaderInfoLog(id, infoLogLength, nullptr, infoLog.data());
-        throw std::runtime_error(infoLog.data());
+        throw std::runtime_error(filename + ":\n" + infoLog.data());
     }
 }
 

@@ -60,11 +60,11 @@ AccelerationStructure::AccelerationStructure(const glm::vec3 &vMin, const glm::v
 
     const CubeData cubeData{{
         frontFace,
-        rightFace,
-        backFace,
-        leftFace,
-        topFace,
-        bottomFace
+        //rightFace,
+        //backFace,
+        //leftFace,
+        //topFace,
+        //bottomFace
     }};
 
     for (const auto &face: cubeData.faces) {
