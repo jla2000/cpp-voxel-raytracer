@@ -7,8 +7,8 @@
 #include "rendering/Shader.h"
 #include "rendering/Camera.h"
 
-const int screenWidth = 1000;
-const int screenHeight = 800;
+const int screenWidth = 800;
+const int screenHeight = 600;
 
 const std::array<GLfloat, 18> quadVertices {
     -1.0f, 1.0f, 0.0f,
@@ -135,8 +135,9 @@ int main(int argc, char *argv[]) {
             if (rotate) {
                 auto rotationSpeed = glfwGetTime();
                 auto camX = sin(rotationSpeed) * cameraRadius;
+                auto camY = sin(rotationSpeed) * 14;
                 auto camZ = cos(rotationSpeed) * cameraRadius;
-                camera.position = camerTarget + glm::vec3{camX, cameraPos.y, camZ};
+                camera.position = camerTarget + glm::vec3{camX, camY, camZ};
             }
 
             auto view = calculateView(camera);
