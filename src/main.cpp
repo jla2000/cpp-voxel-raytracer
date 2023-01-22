@@ -7,8 +7,8 @@
 #include "rendering/Shader.h"
 #include "rendering/Camera.h"
 
-const int screenWidth = 800;
-const int screenHeight = 600;
+const int screenWidth = 1000;
+const int screenHeight = 800;
 
 const std::array<GLfloat, 18> quadVertices {
     -1.0f, 1.0f, 0.0f,
@@ -92,8 +92,8 @@ int main(int argc, char *argv[]) {
 
         glClearColor(0, 1, 1, 1);
 
-        const auto cameraRadius = 18.0f;
-        glm::vec3 cameraPos{0, 10, cameraRadius};
+        const auto cameraRadius = 16.0f;
+        glm::vec3 cameraPos{0, 1, cameraRadius};
         glm::vec3 camerTarget{4, 4, 4};
         Camera camera{
                 cameraPos,
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
             glUniformMatrix4fv(invProjectionId, 1, false, &invProjection[0][0]);
 
             glBindImageTexture(0, renderTextureId, 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
-            glDispatchCompute(screenWidth, screenHeight, 1);
+            glDispatchCompute(screenWidth / 10, screenHeight / 10, 1);
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
             glUseProgram(quadProgram.id);
