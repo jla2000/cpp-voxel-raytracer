@@ -2,6 +2,8 @@
 
 // For fixing floating point errors
 #define EPSILON 0.0001
+#define AA_SAMPLES 4
+#define NUM_BOUNCES 1
 
 layout(local_size_x = 10, local_size_y = 10) in;
 layout(rgba32f, binding = 0) uniform image2D outputImage;
@@ -80,7 +82,6 @@ vec3 randomUnitVector(inout uint state) {
 }
 
 struct VoxelHit {
-    float dist;
     vec3 position;
     vec3 color;
     vec3 normal;
@@ -88,9 +89,9 @@ struct VoxelHit {
 };
 
 bool inVoxelBuffer(ivec3 vx) {
-    return (vx.x >= 0 && vx.x < 8) &&
-    (vx.y >= 0 && vx.y < 8) &&
-    (vx.z >= 0 && vx.z < 8);
+    return (vx.x >= 0 && vx.x < 32) &&
+    (vx.y >= 0 && vx.y < 32) &&
+    (vx.z >= 0 && vx.z < 32);
 }
 
 VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
@@ -106,7 +107,7 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
     tMaxZ = tDelta.z * ((rayDir.z > 0) ? (1.0 - fr.z) : fr.z);
 
     vec3 norm;
-    const int maxTrace = 100;
+    const int maxTrace = 200;
 
     VoxelHit hit;
     hit.hit = false;
@@ -115,17 +116,14 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
 
     for (int i = 0; i < maxTrace; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
-            hit.position = pos;
+            //hit.position = lastPos - tDelta;
+            hit.position = pos + norm;
             hit.normal = norm;
-            hit.dist = length(lastPos - rayPos);
 
-            if (pos.y == 0) {
+            const float sphereRadius = 14;
+            if (length(pos - vec3(16)) < sphereRadius) {
                 hit.hit = true;
-                hit.color = vec3(1, 0, 0);
-                break;
-            } else if (pos.y == 1 && int(pos.x) % 3 == 0 && int(pos.z) % 2 == 0) {
-                hit.hit = true;
-                hit.color = vec3(0, 1, 0);
+                hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
                 break;
             }
         }
@@ -164,14 +162,14 @@ vec3 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         vec3 color = vec3(0);
         bool wasHit = false;
 
-        for (int depth = 0; depth < 3; ++depth) {
+        for (int depth = 0; depth < NUM_BOUNCES; ++depth) {
             float multiplier = pow(0.5, depth);
 
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
                 wasHit = true;
                 color += multiplier * hit.color;
-                rayPos = hit.position + hit.normal;
+                rayPos = hit.position;
                 rayDir = hit.normal + randomUnitVector(rngState);
             } else if (wasHit) {
                 color += multiplier * skyColor(rayPos, rayDir);
@@ -212,7 +210,6 @@ vec3 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
     //return color;
 }
 
-const float AA_SAMPLES = 4;
 
 void main() {
     ivec2 outputCoords = ivec2(gl_GlobalInvocationID.xy);

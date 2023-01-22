@@ -92,16 +92,16 @@ int main(int argc, char *argv[]) {
 
         glClearColor(0, 1, 1, 1);
 
-        const auto cameraRadius = 16.0f;
-        glm::vec3 cameraPos{0, 1, cameraRadius};
-        glm::vec3 camerTarget{4, 4, 4};
+        const auto cameraRadius = 40.0f;
+        glm::vec3 cameraPos{0, 16, cameraRadius};
+        glm::vec3 camerTarget{16, 16, 16};
         Camera camera{
                 cameraPos,
                 camerTarget
         };
 
 
-        glm::uvec3 mapSize{8, 8, 8};
+        glm::uvec3 mapSize{32, 32, 32};
 
         int invViewId = glGetUniformLocation(voxelProgram.id, "invView");
         int invCenteredViewId = glGetUniformLocation(voxelProgram.id, "invCenteredView");
