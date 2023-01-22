@@ -5,6 +5,7 @@
 #include <glfw/glfw3.h>
 
 #include "rendering/Shader.h"
+#include "rendering/Camera.h"
 
 const int screenWidth = 800;
 const int screenHeight = 600;
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
             throw std::runtime_error("Failed to open window");
         }
         glfwMakeContextCurrent(window);
+        glfwSwapInterval(0);
 
         glewExperimental = true;
         if (glewInit() != GLEW_OK) {
@@ -90,12 +92,65 @@ int main(int argc, char *argv[]) {
 
         glClearColor(0, 1, 1, 1);
 
+        const auto cameraRadius = 18.0f;
+        glm::vec3 cameraPos{0, 10, cameraRadius};
+        glm::vec3 camerTarget{4, 4, 4};
+        Camera camera{
+                cameraPos,
+                camerTarget
+        };
+
+
+        glm::uvec3 mapSize{8, 8, 8};
+
+        int invViewId = glGetUniformLocation(voxelProgram.id, "invView");
+        int invCenteredViewId = glGetUniformLocation(voxelProgram.id, "invCenteredView");
+        int invProjectionId = glGetUniformLocation(voxelProgram.id, "invProjection");
+        int mapSizeId = glGetUniformLocation(voxelProgram.id, "mapSize");
+
+        glUseProgram(voxelProgram.id);
+        glUniform3uiv(mapSizeId, 1, &mapSize[0]);
+
+        double previousFrame = glfwGetTime();
+        double currentFrame{};
+        int frameCount = 0;
+
         while (!glfwWindowShouldClose(window)) {
+            currentFrame = glfwGetTime();
+            ++frameCount;
+
+            if (currentFrame - previousFrame >=  1.0) {
+                std::cout << "Fps: " << frameCount << "\n";
+                frameCount = 0;
+                previousFrame = currentFrame;
+            }
+
+            auto rotationSpeed = glfwGetTime();
+
+            auto camX = sin(rotationSpeed) * cameraRadius;
+            auto camZ = cos(rotationSpeed) * cameraRadius;
+            camera.position = camerTarget + glm::vec3{camX, cameraPos.y, camZ};
+
+            auto view = calculateView(camera);
+            auto projection = calculateProjection(screenWidth, screenHeight);
+
+            auto invProjection = glm::inverse(projection);
+            auto invView = glm::inverse(view);
+            auto invCenteredView = invView;
+            invCenteredView[3][0] = 0;
+            invCenteredView[3][1] = 0;
+            invCenteredView[3][2] = 0;
+
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glUseProgram(voxelProgram.id);
+
+            glUniformMatrix4fv(invViewId, 1, false, &invView[0][0]);
+            glUniformMatrix4fv(invCenteredViewId, 1, false, &invCenteredView[0][0]);
+            glUniformMatrix4fv(invProjectionId, 1, false, &invProjection[0][0]);
+
             glBindImageTexture(0, renderTextureId, 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
-            glDispatchCompute(screenWidth / 10, screenHeight / 10, 1);
+            glDispatchCompute(screenWidth, screenHeight, 1);
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
             glUseProgram(quadProgram.id);
