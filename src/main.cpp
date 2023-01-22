@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
         int invCenteredViewId = glGetUniformLocation(voxelProgram.id, "invCenteredView");
         int invProjectionId = glGetUniformLocation(voxelProgram.id, "invProjection");
         int mapSizeId = glGetUniformLocation(voxelProgram.id, "mapSize");
+        int frameId = glGetUniformLocation(voxelProgram.id, "frame");
 
         glUseProgram(voxelProgram.id);
         glUniform3uiv(mapSizeId, 1, &mapSize[0]);
@@ -145,6 +146,7 @@ int main(int argc, char *argv[]) {
 
             glUseProgram(voxelProgram.id);
 
+            glUniform1ui(frameId, frameCount);
             glUniformMatrix4fv(invViewId, 1, false, &invView[0][0]);
             glUniformMatrix4fv(invCenteredViewId, 1, false, &invCenteredView[0][0]);
             glUniformMatrix4fv(invProjectionId, 1, false, &invProjection[0][0]);
