@@ -3,7 +3,7 @@
 // For fixing floating point errors
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
-#define AA_SAMPLES 2
+#define AA_SAMPLES 1
 #define NUM_BOUNCES 3
 
 layout(local_size_x = 10, local_size_y = 10) in;
@@ -64,7 +64,6 @@ vec3 randomUnitVector(inout uint state) {
 struct VoxelHit {
     vec3 position;
     vec3 normal;
-    vec3 albedo;
     vec3 color;
     bool hit;
     bool metal;
@@ -100,20 +99,16 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
     for (int i = 0; i < maxTrace; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
             const float sphereRadius = 14;
-            if (length(pos - vec3(16)) < sphereRadius && ivec3(pos) % 2 == 0) {
+            if (length(pos - vec3(16)) < sphereRadius){// && ivec3(pos) % 2 == 0) {
                 hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
-                //hit.color = vec3(0.05);
                 hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
-                hit.albedo = vec3(0.2);
-                //hit.metal = true;
                 break;
             } else if (pos.y <= 2) {
                 hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
-                hit.albedo = vec3(0.2);
                 hit.color = vec3(0.2);
                 hit.metal = true;
                 break;
@@ -164,11 +159,9 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         }
 
         VoxelHit hit;
-        vec4 color = vec4(0);
-        vec3 throughPut = vec3(1);
         bool wasHit = false;
+        vec4 color = vec4(1);
 
-        vec3 attenuation = vec3(1);
         for (int depth = 0; depth < NUM_BOUNCES; ++depth) {
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
@@ -177,8 +170,7 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                 }
 
                 wasHit = true;
-                color = color + vec4(hit.color * throughPut, 0);
-                throughPut = throughPut * hit.albedo;
+                color = color * vec4(hit.color, 1);
 
                 if (hit.metal) {
                     vec3 reflected = reflect(normalize(rayDir), hit.normal);
@@ -194,7 +186,7 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                     rayDir = hit.normal + randomUnitVector(rngState);
                 }
             } else if (wasHit) {
-                color = color + vec4(skyColor(rayPos, rayDir) * throughPut, 0);
+                color = color * vec4(skyColor(rayPos, rayDir), 0);
                 return color;
             }
         }
