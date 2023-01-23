@@ -116,20 +116,22 @@ int main(int argc, char *argv[]) {
 
         double previousFrame = glfwGetTime();
         double currentFrame{};
-        int frameCount = 0;
-
         bool rotate = true;
+
+        unsigned int globalFrameCounter = 0;
+        unsigned int localFrameCounter = 0;
 
         while (!glfwWindowShouldClose(window)) {
             currentFrame = glfwGetTime();
-            ++frameCount;
+            ++globalFrameCounter;
+            ++localFrameCounter;
 
             if (currentFrame - previousFrame >=  1.0) {
                 std::ostringstream oss;
-                oss << "Fps: " << frameCount << "\n";
+                oss << "Fps: " << localFrameCounter << "\n";
 
                 glfwSetWindowTitle(window, oss.str().c_str());
-                frameCount = 0;
+                localFrameCounter = 0;
                 previousFrame = currentFrame;
             }
             if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
@@ -158,7 +160,7 @@ int main(int argc, char *argv[]) {
 
             glUseProgram(voxelProgram.id);
 
-            glUniform1ui(frameId, frameCount);
+            glUniform1ui(frameId, globalFrameCounter);
             glUniformMatrix4fv(invViewId, 1, false, &invView[0][0]);
             glUniformMatrix4fv(invCenteredViewId, 1, false, &invCenteredView[0][0]);
             glUniformMatrix4fv(invProjectionId, 1, false, &invProjection[0][0]);
