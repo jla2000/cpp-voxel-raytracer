@@ -106,18 +106,13 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
                 hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
                 //hit.metal = true;
                 //hit.color = vec3(1);
-                if (pos.z > 16) {
-                    hit.metal = true;
-                }
                 break;
             } else if (pos.y <= 2) {
                 hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
                 hit.color = vec3(0.2);
-                if (pos.x > 16) {
-                    hit.metal = true;
-                }
+                hit.metal = true;
                 break;
             }
         }
