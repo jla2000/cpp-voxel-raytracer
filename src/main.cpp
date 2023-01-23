@@ -77,8 +77,13 @@ int main(int argc, char *argv[]) {
         ShaderProgram voxelProgram({
             {"shaders/voxel.comp", GL_COMPUTE_SHADER}
         });
-
-        glViewport(0, 0, screenWidth, screenHeight);
+        Camera camera{
+            {-30, 30, -30},
+            {16, 12, 16},
+            screenWidth,
+            screenHeight,
+        };
+        glm::uvec3 mapSize{32, 32, 32};
 
         GLuint vertexArrayId;
         glGenVertexArrays(1, &vertexArrayId);
@@ -109,16 +114,8 @@ int main(int argc, char *argv[]) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+        glViewport(0, 0, screenWidth, screenHeight);
         glClearColor(0, 1, 1, 1);
-
-        Camera camera{
-                {-30, 30, -30},
-                {16, 12, 16},
-                screenWidth,
-                screenHeight,
-        };
-
-        glm::uvec3 mapSize{32, 32, 32};
 
         int invViewId = glGetUniformLocation(voxelProgram.id, "invView");
         int invCenteredViewId = glGetUniformLocation(voxelProgram.id, "invCenteredView");

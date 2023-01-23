@@ -27,7 +27,7 @@ void Camera::updateView() {
 void Camera::updateProjection(int screenWidth, int screenHeight) {
     //float w = float(screenWidth) / 50;
     //float h = float(screenHeight) / 50;
-    //return glm::ortho(-w, w, -h, h, 0.1f, 1.0f);
+    //m_projectionMat = glm::ortho(-w, w, -h, h, 0.1f, 1.0f);
 
     m_projectionMat = glm::perspective(
             glm::radians(45.0f),
