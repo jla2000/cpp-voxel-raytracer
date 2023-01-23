@@ -82,7 +82,7 @@ void renderVoxel(vec3 pos, inout VoxelHit hit) {
         hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
     } else if (pos.y == 0 || pos.x == 31 || pos.z == 31) {
         hit.hit = true;
-        hit.color = vec3(0.2);
+        hit.color = vec3(0.8);
         hit.metal = true;
     }
 }

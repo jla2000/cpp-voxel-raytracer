@@ -31,6 +31,7 @@ const std::array<GLfloat, 18> quadUvs {
 };
 
 static bool dragging = false;
+static bool denoise = true;
 static double lastCursorX = 0;
 static double lastCursorY = 0;
 
@@ -42,6 +43,8 @@ static void mouseHandler(GLFWwindow* window, int button, int action, int code) {
         } else if (action == GLFW_RELEASE) {
             dragging = false;
         }
+    } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        denoise = !denoise;
     }
 }
 
@@ -164,6 +167,10 @@ int main(int argc, char *argv[]) {
                     lastCursorY = cursorY;
                     sampleCount = 1;
                 }
+            }
+
+            if (!denoise) {
+                sampleCount = 1;
             }
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
