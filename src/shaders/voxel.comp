@@ -71,9 +71,9 @@ struct VoxelHit {
 };
 
 bool inVoxelBuffer(ivec3 vx) {
-    return (vx.x >= 0 && vx.x < 32) &&
-    (vx.y >= 0 && vx.y < 32) &&
-    (vx.z >= 0 && vx.z < 32);
+    return (vx.x >= 0 && vx.x < mapSize.x) &&
+    (vx.y >= 0 && vx.y < mapSize.y) &&
+    (vx.z >= 0 && vx.z < mapSize.z);
 }
 
 VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
@@ -101,18 +101,16 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
         if (inVoxelBuffer(ivec3(pos))) {
             const float sphereRadius = 14;
             if (length(pos - vec3(16)) < sphereRadius && ivec3(pos) % 2 == 0) {
-                //FIXME: position is somehow not quite right, fish eye effect
-                hit.position = rayPos + dist * rayDir;
+                hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
                 //hit.color = vec3(0.05);
                 hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
-                hit.albedo = vec3(0.0);
-                hit.metal = true;
+                hit.albedo = vec3(0.2);
+                //hit.metal = true;
                 break;
             } else if (pos.y <= 2) {
-                //FIXME: position is somehow not quite right, fish eye effect
-                hit.position = rayPos + dist * rayDir;
+                hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
                 hit.albedo = vec3(0.2);
