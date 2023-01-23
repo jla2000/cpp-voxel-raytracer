@@ -3,13 +3,14 @@
 // For fixing floating point errors
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
-#define NUM_BOUNCES 3
+#define NUM_BOUNCES 6
 
 layout(local_size_x = 10, local_size_y = 10) in;
 layout(rgba32f, binding = 0) uniform image2D outputImage;
 
 uniform uvec3 mapSize;
-uniform uint frame;
+uniform uint frameCount;
+uniform uint sampleCount;
 
 uniform mat4 invView;
 uniform mat4 invCenteredView;
@@ -79,7 +80,7 @@ void renderVoxel(vec3 pos, inout VoxelHit hit) {
     if (length(pos - vec3(16)) < sphereRadius && ivec3(pos) % 2 == 0) {
         hit.hit = true;
         hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
-    } else if (pos.y <= 2) {
+    } else if (pos.y == 0 || pos.x == 31 || pos.z == 31) {
         hit.hit = true;
         hit.color = vec3(0.2);
         hit.metal = true;
@@ -100,8 +101,8 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
 
     vec3 norm;
     vec3 hitPos;
-    const int maxTrace = 150;
     float dist;
+    const int maxTrace = 100;
 
     VoxelHit hit;
     hit.hit = false;
@@ -185,13 +186,17 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                     rayDir = hit.normal + randomUnitVector(rngState);
                 }
             } else {
+                // only for nice demo
+                color.xyz *= skyColor(rayPos, rayDir);
                 break;
             }
         }
 
         return color;
     } else {
-        return vec4(0);
+        //return vec4(0);
+        // for nice demo:
+        return vec4(skyColor(rayPos, rayDir), 1);
     }
 }
 
@@ -199,17 +204,22 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
 void main() {
     ivec2 outputCoords = ivec2(gl_GlobalInvocationID.xy);
     ivec2 screenSize = imageSize(outputImage);
-    vec2 screenCoords = vec2(outputCoords) / screenSize * 2 - 1;
+    //vec2 screenCoords = vec2(outputCoords) / screenSize * 2 - 1;
 
     // Initialize random seed
-    uint rngState = uint(outputCoords.x) * 1973 + uint(outputCoords.y) * 9277 + frame * 26699 | 1;
+    uint rngState = uint(outputCoords.x) * 1973 + uint(outputCoords.y) * 9277 + frameCount * 26699 | 1;
+    vec2 rayNoise = vec2(randomFloat(rngState), randomFloat(rngState));
+    vec2 screenCoords = (vec2(outputCoords) + rayNoise) / screenSize * 2 - 1;
 
     vec3 rayPos = (invView * vec4(0, 0, 0, 1)).xyz;
     vec3 rayDir = normalize((invCenteredView * invProjection * vec4(screenCoords, 0, 1)).xyz) + EPSILON;
-    //vec3 rayPos = (invView * vec4(screenCoords, 0, 1)).xyz;
+    //vec3 rayPos = (invView * invProjection * vec4(screenCoords, 0, 1)).xyz;
     //vec3 rayDir = normalize((invCenteredView * invProjection * vec4(0, 0, 0, 1)).xyz) + EPSILON;
 
     vec4 outputColor = traceRay(rayPos, rayDir, rngState);
-    vec3 gammaCorrectedColor = pow(outputColor.xyz, vec3(INV_GAMMA));
-    imageStore(outputImage, outputCoords, vec4(gammaCorrectedColor, outputColor.w));
+    outputColor.xyz = pow(outputColor.xyz, vec3(INV_GAMMA));
+
+    vec4 prevSample = imageLoad(outputImage, outputCoords);
+    outputColor = mix(prevSample, outputColor, (1 / float(sampleCount)));
+    imageStore(outputImage, outputCoords, outputColor);
 }
