@@ -111,13 +111,11 @@ int main(int argc, char *argv[]) {
 
         glClearColor(0, 1, 1, 1);
 
-        const auto cameraRadius = 30.0f;
-        glm::vec3 cameraPos{-cameraRadius, cameraRadius, -cameraRadius};
-        glm::vec3 camerTarget{16, 12, 16};
         Camera camera{
-                cameraPos,
-                camerTarget,
-                {0, 1 ,0},
+                {-30, 30, -30},
+                {16, 12, 16},
+                screenWidth,
+                screenHeight,
         };
 
         glm::uvec3 mapSize{32, 32, 32};
@@ -144,16 +142,6 @@ int main(int argc, char *argv[]) {
             ++globalFrameCounter;
             ++localFrameCounter;
 
-            auto view = calculateView(camera);
-            auto projection = calculateProjection(screenWidth, screenHeight);
-
-            auto invProjection = glm::inverse(projection);
-            auto invView = glm::inverse(view);
-            auto invCenteredView = invView;
-            invCenteredView[3][0] = 0;
-            invCenteredView[3][1] = 0;
-            invCenteredView[3][2] = 0;
-
             if (currentFrame - previousFrame >=  1.0) {
                 std::ostringstream oss;
                 oss << "draft";
@@ -174,30 +162,7 @@ int main(int argc, char *argv[]) {
                 double deltaY = lastCursorY - cursorY;
 
                 if (deltaX != 0.0 || deltaY != 0.0) {
-                    glm::vec4 position = glm::vec4(camera.position, 1.0f);
-                    glm::vec4 pivot = glm::vec4(camera.target, 1.0f);
-                    glm::vec3 right = glm::transpose(view)[0];
-
-                    float deltaAngleX = (2 * M_PI / screenWidth);
-                    float deltaAngleY = (M_PI / screenHeight);
-                    float xAngle = deltaX * deltaAngleX;
-                    float yAngle = deltaY * deltaAngleY;
-
-                    glm::vec3 viewDir = -glm::transpose(view)[2];
-                    float cosAngle = dot(viewDir, camera.up);
-                    if (cosAngle * glm::sign(deltaAngleY) > 0.99f)
-                        deltaAngleY = 0;
-
-                    glm::mat4 rotationX(1.0f);
-                    rotationX = glm::rotate(rotationX, xAngle, camera.up);
-                    position = (rotationX * (position - pivot)) + pivot;
-
-                    glm::mat4 rotationY(1.0f);
-                    rotationY = glm::rotate(rotationY, yAngle, right);
-                    position = (rotationY * (position - pivot)) + pivot;
-
-                    camera.position = position;
-
+                    camera.arcBallRotate(deltaX, deltaY, screenWidth, screenHeight);
                     lastCursorX = cursorX;
                     lastCursorY = cursorY;
                     sampleCount = 1;
@@ -210,9 +175,9 @@ int main(int argc, char *argv[]) {
 
             glUniform1ui(frameCountId, globalFrameCounter);
             glUniform1ui(sampleCountId, sampleCount);
-            glUniformMatrix4fv(invViewId, 1, false, &invView[0][0]);
-            glUniformMatrix4fv(invCenteredViewId, 1, false, &invCenteredView[0][0]);
-            glUniformMatrix4fv(invProjectionId, 1, false, &invProjection[0][0]);
+            glUniformMatrix4fv(invViewId, 1, false, &camera.m_invViewMat[0][0]);
+            glUniformMatrix4fv(invCenteredViewId, 1, false, &camera.m_invCenteredMat[0][0]);
+            glUniformMatrix4fv(invProjectionId, 1, false, &camera.m_invProjectionMat[0][0]);
 
             glBindImageTexture(0, renderTextureId, 0, false, 0, GL_READ_WRITE, GL_RGBA32F);
             glDispatchCompute(screenWidth / 10, screenHeight / 10, 1);
