@@ -99,18 +99,25 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
     for (int i = 0; i < maxTrace; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
             const float sphereRadius = 14;
-            if (length(pos - vec3(16)) < sphereRadius){// && ivec3(pos) % 2 == 0) {
+            if (length(pos - vec3(16)) < sphereRadius && ivec3(pos) % 2 == 0) {
                 hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
                 hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
+                //hit.metal = true;
+                //hit.color = vec3(1);
+                if (pos.z > 16) {
+                    hit.metal = true;
+                }
                 break;
             } else if (pos.y <= 2) {
                 hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
                 hit.hit = true;
                 hit.color = vec3(0.2);
-                hit.metal = true;
+                if (pos.x > 16) {
+                    hit.metal = true;
+                }
                 break;
             }
         }
@@ -159,8 +166,7 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         }
 
         VoxelHit hit;
-        bool wasHit = false;
-        vec4 color = vec4(1);
+        vec4 color = vec4(1, 1, 1, 0);
 
         for (int depth = 0; depth < NUM_BOUNCES; ++depth) {
             hit = traceVoxel(rayPos, rayDir);
@@ -169,7 +175,6 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                     color.w = length(hit.position - rayPos);
                 }
 
-                wasHit = true;
                 color = color * vec4(hit.color, 1);
 
                 if (hit.metal) {
@@ -178,26 +183,22 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                         rayPos = hit.position;
                         rayDir = reflected;
                     } else {
-                        // nothing
-                        break;
+                        return color * vec4(0, 0, 0, 1);
                     }
                 } else {
                     rayPos = hit.position;
                     rayDir = hit.normal + randomUnitVector(rngState);
                 }
-            } else if (wasHit) {
-                color = color * vec4(skyColor(rayPos, rayDir), 0);
+            } else {
+                color = color * vec4(skyColor(rayPos, rayDir), 1);
                 return color;
             }
         }
 
-        if (wasHit) {
-            return color;
-        }
+        return color;
+    } else {
+        return vec4(skyColor(rayPos, rayDir), 0);
     }
-
-    // In case no voxel was hit
-    return vec4(skyColor(rayPos, rayDir), 0);
 }
 
 
