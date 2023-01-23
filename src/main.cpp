@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
             if (rotate) {
                 auto rotationSpeed = glfwGetTime();
                 auto camX = sin(rotationSpeed) * cameraRadius;
-                auto camY = sin(rotationSpeed) * cameraRadius / 3 + 10;
+                auto camY = cameraRadius;//sin(rotationSpeed) * cameraRadius / 3 + 10;
                 auto camZ = cos(rotationSpeed) * cameraRadius;
                 camera.position = camerTarget + glm::vec3{camX, camY, camZ};
             }

@@ -198,11 +198,17 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
 
 void main() {
     ivec2 outputCoords = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 screenSize = imageSize(outputImage);
+    vec2 screenCoords = vec2(outputCoords) / screenSize * 2 - 1;
 
+    // Initialize random seed
     uint rngState = uint(outputCoords.x) * 1973 + uint(outputCoords.y) * 9277 + frame * 26699 | 1;
+
     vec3 rayPos = (invView * vec4(0, 0, 0, 1)).xyz;
-    vec2 screenCoords = vec2(outputCoords) / vec2(imageSize(outputImage)) * 2 - 1;
     vec3 rayDir = normalize((invCenteredView * invProjection * vec4(screenCoords, 0, 1)).xyz) + EPSILON;
+    //vec3 rayPos = (invView * vec4(screenCoords, 0, 1)).xyz;
+    //vec3 rayDir = normalize((invCenteredView * invProjection * vec4(0, 0, 0, 1)).xyz) + EPSILON;
+
     vec4 outputColor = traceRay(rayPos, rayDir, rngState);
     vec3 gammaCorrectedColor = pow(outputColor.xyz, vec3(INV_GAMMA));
     imageStore(outputImage, outputCoords, vec4(gammaCorrectedColor, outputColor.w));
