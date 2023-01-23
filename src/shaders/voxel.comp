@@ -3,7 +3,6 @@
 // For fixing floating point errors
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
-#define AA_SAMPLES 1
 #define NUM_BOUNCES 3
 
 layout(local_size_x = 10, local_size_y = 10) in;
@@ -75,6 +74,18 @@ bool inVoxelBuffer(ivec3 vx) {
     (vx.z >= 0 && vx.z < mapSize.z);
 }
 
+void renderVoxel(vec3 pos, inout VoxelHit hit) {
+    const float sphereRadius = 14;
+    if (length(pos - vec3(16)) < sphereRadius && ivec3(pos) % 2 == 0) {
+        hit.hit = true;
+        hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
+    } else if (pos.y <= 2) {
+        hit.hit = true;
+        hit.color = vec3(0.2);
+        hit.metal = true;
+    }
+}
+
 VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
     vec3 pos = floor(rayPos);
     vec3 step = sign(rayDir);
@@ -98,21 +109,10 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
 
     for (int i = 0; i < maxTrace; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
-            const float sphereRadius = 14;
-            if (length(pos - vec3(16)) < sphereRadius && ivec3(pos) % 2 == 0) {
+            renderVoxel(pos, hit);
+            if (hit.hit) {
                 hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
-                hit.hit = true;
-                hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
-                //hit.metal = true;
-                //hit.color = vec3(1);
-                break;
-            } else if (pos.y <= 2) {
-                hit.position = rayPos + (dist - EPSILON) * rayDir;
-                hit.normal = norm;
-                hit.hit = true;
-                hit.color = vec3(0.2);
-                hit.metal = true;
                 break;
             }
         }
@@ -150,14 +150,13 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
 vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
     vec3 invRayDir = 1.0 / rayDir;
     vec2 intersection = intersectBox(rayPos, invRayDir, vec3(0, 0, 0), mapSize);
+    vec3 origRayPos = rayPos;
 
     // Ray hits the voxel box
     if (intersection.x <= intersection.y) {
         // Advance ray start to box
         if (intersection.x > 0) {
-            //FIXME: this makes noise glitches more visible instead of only improving performance
-            //FIXME: also glitches at the chunk borders
-            //rayPos += rayDir * (intersection.x + EPSILON);
+            rayPos += rayDir * (intersection.x - EPSILON);
         }
 
         VoxelHit hit;
@@ -167,10 +166,11 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
                 if (depth == 0) {
-                    color.w = length(hit.position - rayPos);
+                    color.w = length(hit.position - origRayPos);
                 }
 
-                color = color * vec4(hit.color, 1);
+                // Lighting needs to be implemented here
+                color.xyz *= hit.color;
 
                 if (hit.metal) {
                     vec3 reflected = reflect(normalize(rayDir), hit.normal);
@@ -178,21 +178,20 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                         rayPos = hit.position;
                         rayDir = reflected;
                     } else {
-                        return color * vec4(0, 0, 0, 1);
+                        return vec4(0, 0, 0, 1);
                     }
                 } else {
                     rayPos = hit.position;
                     rayDir = hit.normal + randomUnitVector(rngState);
                 }
             } else {
-                color = color * vec4(skyColor(rayPos, rayDir), 1);
-                return color;
+                break;
             }
         }
 
         return color;
     } else {
-        return vec4(skyColor(rayPos, rayDir), 0);
+        return vec4(0);
     }
 }
 
@@ -202,17 +201,9 @@ void main() {
 
     uint rngState = uint(outputCoords.x) * 1973 + uint(outputCoords.y) * 9277 + frame * 26699 | 1;
     vec3 rayPos = (invView * vec4(0, 0, 0, 1)).xyz;
-    vec4 outputColor = vec4(0);
-
-    for (int aa = 0; aa < AA_SAMPLES; ++aa) {
-        vec2 randomOffset = vec2(randomFloat(rngState), randomFloat(rngState));
-        vec2 screenCoords = (vec2(outputCoords) + randomOffset) / vec2(imageSize(outputImage)) * 2 - 1;
-        vec3 rayDir = normalize((invCenteredView * invProjection * vec4(screenCoords, 0, 1)).xyz) + EPSILON;
-
-        outputColor += traceRay(rayPos, rayDir, rngState);
-    }
-
-    vec4 aaColor = outputColor / AA_SAMPLES;
-    vec3 gammaCorrectedColor = pow(aaColor.xyz, vec3(INV_GAMMA));
-    imageStore(outputImage, outputCoords, vec4(gammaCorrectedColor, aaColor.w));
+    vec2 screenCoords = vec2(outputCoords) / vec2(imageSize(outputImage)) * 2 - 1;
+    vec3 rayDir = normalize((invCenteredView * invProjection * vec4(screenCoords, 0, 1)).xyz) + EPSILON;
+    vec4 outputColor = traceRay(rayPos, rayDir, rngState);
+    vec3 gammaCorrectedColor = pow(outputColor.xyz, vec3(INV_GAMMA));
+    imageStore(outputImage, outputCoords, vec4(gammaCorrectedColor, outputColor.w));
 }
