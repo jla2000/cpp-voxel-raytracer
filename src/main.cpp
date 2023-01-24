@@ -117,6 +117,32 @@ int main(int argc, char *argv[]) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+        glm::vec4 voxels[32*32*32] {};
+        //voxels[0] = {1, 1, 0};
+        //voxels[1] = {0, 1, 0};
+        //voxels[2] = {0, 1, 1};
+        //voxels[32] = {0, 1, 0};
+        //voxels[64] = {0, 1, 0};
+        for (int z = 0; z < 32; ++z) {
+            for (int y = 0; y < 32; ++y) {
+                for (int x = 0; x < 32; ++x) {
+                    int index = (z * 32 * 32 + y * 32 + x);
+
+                    const float sphereRadius = 14;
+                    if (length(glm::vec3(x, y, z) - glm::vec3(16)) < sphereRadius && (x % 2 + y % 2 + z % 2 == 0)) {
+                        voxels[index] = glm::vec4((glm::vec3(x, y, z) - glm::vec3(16)) / (2 * sphereRadius) + glm::vec3(0.6), 1);
+                    } else if (y == 0 || x == 31 || z == 31) {
+                        voxels[index] = glm::vec4(0.8, 0.8, 0.8, 2.0);
+                    }
+                }
+            }
+        }
+
+        GLuint voxelBufferId;
+        glGenBuffers(1, &voxelBufferId);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, voxelBufferId);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(voxels), &voxels[0][0], GL_STATIC_DRAW);
+
         glViewport(0, 0, screenWidth, screenHeight);
         glClearColor(0, 1, 1, 1);
 
@@ -184,8 +210,9 @@ int main(int argc, char *argv[]) {
             glUniformMatrix4fv(invProjectionId, 1, false, &camera.m_invProjectionMat[0][0]);
 
             glBindImageTexture(0, renderTextureId, 0, false, 0, GL_READ_WRITE, GL_RGBA32F);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, voxelBufferId);
             glDispatchCompute(screenWidth / 10, screenHeight / 10, 1);
-            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
             ++sampleCount;
 
             glUseProgram(quadProgram.id);

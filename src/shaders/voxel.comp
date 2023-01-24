@@ -8,6 +8,10 @@
 layout(local_size_x = 10, local_size_y = 10) in;
 layout(rgba32f, binding = 0) uniform image2D outputImage;
 
+layout(binding = 0) buffer voxels {
+    vec4 data[];
+};
+
 uniform uvec3 mapSize;
 uniform uint frameCount;
 uniform uint sampleCount;
@@ -75,16 +79,17 @@ bool inVoxelBuffer(ivec3 vx) {
     (vx.z >= 0 && vx.z < mapSize.z);
 }
 
-void renderVoxel(vec3 pos, inout VoxelHit hit) {
-    const float sphereRadius = 14;
-    if (length(pos - vec3(16)) < sphereRadius && ivec3(pos) % 2 == 0) {
+void getVoxel(vec3 pos, inout VoxelHit hit) {
+    uvec3 voxelPos = uvec3(pos);
+    // FIXME: assuming mapSize is same all axis
+    uint size = 32;
+    uint voxelIdx = voxelPos.z*size*size + voxelPos.y*size + voxelPos.x;
+    vec4 voxelColor = data[voxelIdx];
+
+    if (voxelColor.w >= 1) {
         hit.hit = true;
-        hit.color = (pos - vec3(16)) / (2 * sphereRadius) + 0.6;
-    } else if (pos.y == 0 || pos.x == 31 || pos.z == 31) {
-        hit.hit = true;
-        hit.color = vec3(0.8);
-        //hit.metal = true;
-        if (pos.y == 0) {
+        hit.color = voxelColor.xyz;
+        if (voxelColor.w == 2) {
             hit.metal = true;
         }
     }
@@ -113,7 +118,7 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
 
     for (int i = 0; i < maxTrace; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
-            renderVoxel(pos, hit);
+            getVoxel(pos, hit);
             if (hit.hit) {
                 hit.position = rayPos + (dist - EPSILON) * rayDir;
                 hit.normal = norm;
