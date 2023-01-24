@@ -83,7 +83,10 @@ void renderVoxel(vec3 pos, inout VoxelHit hit) {
     } else if (pos.y == 0 || pos.x == 31 || pos.z == 31) {
         hit.hit = true;
         hit.color = vec3(0.8);
-        hit.metal = true;
+        //hit.metal = true;
+        if (pos.y == 0) {
+            hit.metal = true;
+        }
     }
 }
 
@@ -187,16 +190,16 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                 }
             } else {
                 // only for nice demo
-                color.xyz *= skyColor(rayPos, rayDir);
+                //color.xyz *= skyColor(rayPos, rayDir);
                 break;
             }
         }
 
         return color;
     } else {
-        //return vec4(0);
+        return vec4(1);
         // for nice demo:
-        return vec4(skyColor(rayPos, rayDir), 1);
+        //return vec4(skyColor(rayPos, rayDir), 1);
     }
 }
 
