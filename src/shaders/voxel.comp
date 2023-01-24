@@ -1,15 +1,21 @@
 #version 440 core
+#extension GL_NV_gpu_shader5 : enable
 
 // For fixing floating point errors
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
 #define NUM_BOUNCES 1000
+#define MAX_TRACES 100
 
 layout(local_size_x = 10, local_size_y = 10) in;
 layout(rgba32f, binding = 0) uniform image2D outputImage;
 
-layout(binding = 0) buffer voxels {
-    vec4 data[];
+layout(binding = 0) buffer voxelIndices {
+    uint8_t indices[];
+};
+
+layout(binding = 1) buffer voxelPalette {
+    uint32_t palette[];
 };
 
 uniform uvec3 mapSize;
@@ -79,19 +85,25 @@ bool inVoxelBuffer(ivec3 vx) {
     (vx.z >= 0 && vx.z < mapSize.z);
 }
 
+vec4 decodeColor(uint32_t paletteColor) {
+    return vec4(
+        (paletteColor >> 24) & 0xff,
+        (paletteColor >> 16) & 0xff,
+        (paletteColor >> 8) & 0xff,
+        (paletteColor >> 0) & 0xff
+    ) / 255;
+}
+
 void getVoxel(vec3 pos, inout VoxelHit hit) {
     uvec3 voxelPos = uvec3(pos);
     // FIXME: assuming mapSize is same all axis
     uint size = 32;
-    uint voxelIdx = voxelPos.z*size*size + voxelPos.y*size + voxelPos.x;
-    vec4 voxelColor = data[voxelIdx];
+    uint voxelIdx = voxelPos.z*mapSize.y*mapSize.x + voxelPos.y*mapSize.x + voxelPos.x;
+    uint8_t voxelColorIndex = indices[voxelIdx];
 
-    if (voxelColor.w >= 1) {
+    if (voxelColorIndex > 0u) {
         hit.hit = true;
-        hit.color = voxelColor.xyz;
-        if (voxelColor.w == 2) {
-            hit.metal = true;
-        }
+        hit.color = decodeColor(palette[voxelColorIndex]).xyz;
     }
 }
 
@@ -110,13 +122,12 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
     vec3 norm;
     vec3 hitPos;
     float dist;
-    const int maxTrace = 100;
 
     VoxelHit hit;
     hit.hit = false;
     hit.metal = false;
 
-    for (int i = 0; i < maxTrace; ++i) {
+    for (int i = 0; i < MAX_TRACES; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
             getVoxel(pos, hit);
             if (hit.hit) {
