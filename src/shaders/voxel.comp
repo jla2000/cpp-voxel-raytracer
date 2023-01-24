@@ -4,7 +4,7 @@
 // For fixing floating point errors
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
-#define NUM_BOUNCES 1000
+#define NUM_BOUNCES 100
 #define MAX_TRACES 100
 
 layout(local_size_x = 10, local_size_y = 10) in;
@@ -101,7 +101,7 @@ void getVoxel(vec3 pos, inout VoxelHit hit) {
     uint voxelIdx = voxelPos.z*mapSize.y*mapSize.x + voxelPos.y*mapSize.x + voxelPos.x;
     uint8_t voxelColorIndex = indices[voxelIdx];
 
-    if (voxelColorIndex > 0u) {
+    if (voxelColorIndex > 1u) {
         hit.hit = true;
         hit.color = decodeColor(palette[voxelColorIndex]).xyz;
     }
