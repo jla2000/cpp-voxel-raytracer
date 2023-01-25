@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
         ShaderProgram voxelProgram({
             {"shaders/voxel.comp", GL_COMPUTE_SHADER}
         });
-        Model model = demoModel();
+        Model model = loadVoxModel("monu3.vox");
 
         Camera camera{
             glm::vec3{-1, 0.5f, -1} * glm::vec3{model.size},

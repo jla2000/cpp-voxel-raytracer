@@ -12,5 +12,5 @@ struct Model {
     std::vector<uint8_t> indices;
 };
 
-Model demoModel();
-Model loadModel(const std::string& filename);
+Model loadExampleModel();
+Model loadVoxModel(const std::string& filename);

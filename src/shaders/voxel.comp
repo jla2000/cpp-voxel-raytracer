@@ -4,8 +4,8 @@
 // For fixing floating point errors
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
-#define NUM_BOUNCES 100
-#define MAX_TRACES 100
+#define NUM_BOUNCES 3
+#define MAX_TRACES 300
 
 layout(local_size_x = 10, local_size_y = 10) in;
 layout(rgba32f, binding = 0) uniform image2D outputImage;
@@ -101,9 +101,10 @@ void getVoxel(vec3 pos, inout VoxelHit hit) {
     uint voxelIdx = voxelPos.z*mapSize.y*mapSize.x + voxelPos.y*mapSize.x + voxelPos.x;
     uint8_t voxelColorIndex = indices[voxelIdx];
 
-    if (voxelColorIndex > 1u) {
+    if (voxelColorIndex != 0u) {
         hit.hit = true;
         hit.color = decodeColor(palette[voxelColorIndex]).xyz;
+        //hit.color = vec3(0.2);
     }
 }
 
@@ -232,7 +233,7 @@ void main() {
 
     vec3 rayPos = (invView * vec4(0, 0, 0, 1)).xyz;
     vec3 rayDir = normalize((invCenteredView * invProjection * vec4(screenCoords, 0, 1)).xyz) + EPSILON;
-    //vec3 rayPos = (invView * invProjection * vec4(screenCoords, 0, 1)).xyz;
+    //vec3 rayPos = (invView * invProjection * vec4(screenCoords * 2, 0, 1)).xyz;
     //vec3 rayDir = normalize((invCenteredView * invProjection * vec4(0, 0, 0, 1)).xyz) + EPSILON;
 
     vec4 outputColor = traceRay(rayPos, rayDir, rngState);

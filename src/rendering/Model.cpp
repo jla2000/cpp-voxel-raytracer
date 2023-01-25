@@ -1,6 +1,8 @@
 #include "Model.h"
 
 #include <glm/geometric.hpp>
+#include <fstream>
+#include <iterator>
 
 
 uint32_t defaultPalette[256] {
@@ -22,7 +24,7 @@ uint32_t defaultPalette[256] {
         0xff880000, 0xff770000, 0xff550000, 0xff440000, 0xff220000, 0xff110000, 0xffeeeeee, 0xffdddddd, 0xffbbbbbb, 0xffaaaaaa, 0xff888888, 0xff777777, 0xff555555, 0xff444444, 0xff222222, 0xff111111
 };
 
-Model demoModel() {
+Model loadExampleModel() {
     Model model;
     model.size = {32, 32, 32};
     model.indices.resize(model.size.x * model.size.y * model.size.z);
@@ -49,4 +51,87 @@ Model demoModel() {
     return model;
 }
 
-Model loadModel(const std::string& filename);
+Model loadVoxModel(const std::string& filename) {
+    std::ifstream ifs(filename, std::ios::in | std::ios::binary);
+
+    if (!ifs.is_open()) {
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+
+    std::streampos fileSize;
+    ifs.seekg(0, std::ios::end);
+    fileSize = ifs.tellg();
+    ifs.seekg(0, std::ios::beg);
+
+    std::vector<char> voxData(fileSize);
+    ifs.read(&voxData[0], fileSize);
+
+    struct VoxHeader {
+        char id[4];
+        int32_t version;
+    } __attribute__((packed));
+
+    struct ChunkHeader {
+        char id[4];
+        int32_t numChunkBytes;
+        int32_t numChildBytes;
+    };
+
+    struct SIZEChunk {
+        int32_t sizeX;
+        int32_t sizeY;
+        int32_t sizeZ;
+    } __attribute__((packed));
+
+    struct XYZIChunk {
+        int32_t numVoxels;
+    } __attribute__((packed));
+
+    auto strEqual = [](const char* expected, const char* actual, size_t size) {
+        return std::equal(expected, expected + size, actual);
+    };
+
+    VoxHeader* header = reinterpret_cast<VoxHeader*>(voxData.data());
+    if (!strEqual("VOX ", header->id, 4)) {
+        throw std::runtime_error("Not a valid vox file");
+    }
+
+    if (header->version != 150) {
+        throw std::runtime_error("Unexpected vox version");
+    }
+
+    ChunkHeader* mainChunk = reinterpret_cast<ChunkHeader*>(header + 1);
+    if (!strEqual("MAIN", mainChunk->id, 4)) {
+        throw std::runtime_error("Main chunk not found");
+    }
+
+    ChunkHeader* sizeChunk = mainChunk + 1;
+    SIZEChunk* sizeData = reinterpret_cast<SIZEChunk*>(sizeChunk + 1);
+    ChunkHeader* xyziChunk = reinterpret_cast<ChunkHeader*>(sizeData + 1);
+    XYZIChunk* xyziData = reinterpret_cast<XYZIChunk*>(xyziChunk + 1);
+
+    Model model;
+    model.size = {sizeData->sizeX, sizeData->sizeZ, sizeData->sizeY};
+    model.indices.resize(sizeData->sizeX * sizeData->sizeY * sizeData->sizeY);
+
+    int8_t* voxel = reinterpret_cast<int8_t*>(xyziData + 1);
+    for (unsigned int i = 0; i < xyziData->numVoxels; ++i) {
+        int x = sizeData->sizeX - *voxel - 1;
+        ++voxel;
+        int z = *voxel;
+        ++voxel;
+        int y = *voxel;
+        ++voxel;
+        int c = *voxel;
+        ++voxel;
+
+        int voxelIndex = z * model.size.y * model.size.x + y * model.size.x + x;
+        model.indices[voxelIndex] = c;
+    }
+
+    //ChunkHeader* rgbaChunk = reinterpret_cast<ChunkHeader*>(voxel);
+
+    std::copy_n(defaultPalette, 256, model.palette.begin());
+
+    return model;
+}
