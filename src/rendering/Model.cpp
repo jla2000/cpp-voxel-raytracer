@@ -75,7 +75,7 @@ Model loadVoxModel(const std::string& filename) {
         char id[4];
         int32_t numChunkBytes;
         int32_t numChildBytes;
-    };
+    } __attribute__((packed));
 
     struct SIZEChunk {
         int32_t sizeX;

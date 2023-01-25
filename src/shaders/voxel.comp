@@ -74,7 +74,8 @@ vec3 randomUnitVector(inout uint state) {
 struct VoxelHit {
     vec3 position;
     vec3 normal;
-    vec3 color;
+    vec3 albedo;
+    vec3 emissive;
     bool hit;
     bool metal;
 };
@@ -103,8 +104,7 @@ void getVoxel(vec3 pos, inout VoxelHit hit) {
 
     if (voxelColorIndex != 0u) {
         hit.hit = true;
-        hit.color = decodeColor(palette[voxelColorIndex]).xyz;
-        //hit.color = vec3(0.2);
+        hit.albedo = decodeColor(palette[voxelColorIndex]).xyz;
     }
 }
 
@@ -181,17 +181,20 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         }
 
         VoxelHit hit;
-        vec4 color = vec4(1, 1, 1, 0);
+        vec3 color = vec3(0);
+        vec3 throughPut = vec3(1);
+        float depth = 0;
 
-        for (int depth = 0; depth < NUM_BOUNCES; ++depth) {
+        for (int n = 0; n < NUM_BOUNCES; ++n) {
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
-                if (depth == 0) {
-                    color.w = length(hit.position - origRayPos);
+                if (n == 0) {
+                    depth = length(hit.position - origRayPos);
                 }
 
                 // Lighting needs to be implemented here
-                color.xyz *= hit.color;
+                color += hit.emissive * throughPut;
+                throughPut *= hit.albedo;
 
                 if (hit.metal) {
                     vec3 reflected = reflect(normalize(rayDir), hit.normal);
@@ -207,16 +210,16 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                 }
             } else {
                 // only for nice demo
-                //color.xyz *= skyColor(rayPos, rayDir);
+                color += skyColor(rayPos, rayDir) * throughPut;
                 break;
             }
         }
 
-        return color;
+        return vec4(color, depth);
     } else {
-        return vec4(1);
+        //return vec4(1, 1, 1, 0);
         // for nice demo:
-        //return vec4(skyColor(rayPos, rayDir), 1);
+        return vec4(skyColor(rayPos, rayDir), 0);
     }
 }
 
