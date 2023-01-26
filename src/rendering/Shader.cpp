@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 
 std::string loadShaderSource(const std::string& filename) {
     std::ostringstream iss;
@@ -11,7 +12,17 @@ std::string loadShaderSource(const std::string& filename) {
         throw std::runtime_error("Failed to open file: " + filename);
     }
 
-    iss << ifs.rdbuf();
+    std::string line;
+    while (std::getline(ifs, line)) {
+        if (line.starts_with("#include")) {
+            std::string fileDir = std::filesystem::path(filename).parent_path().string();
+            std::string includedFile = line.substr(line.find('"') + 1, std::string::npos);
+            includedFile = includedFile.substr(0, includedFile.size() - 1);
+            line = loadShaderSource(fileDir + '/' + includedFile);
+        }
+        iss << line << "\n";
+    }
+
     return iss.str();
 }
 

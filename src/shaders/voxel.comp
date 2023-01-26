@@ -26,58 +26,21 @@ uniform mat4 invView;
 uniform mat4 invCenteredView;
 uniform mat4 invProjection;
 
-// Sky color example from Ray Tracing In One Weekend
-vec3 skyColor(vec3 rayPos, vec3 rayDir) {
-    float t = 0.5 * (rayDir.y + 1);
-    return (1 - t) * vec3(1) + t * vec3(0.5, 0.7, 1.0);
-}
+#include "sky.glsl"
+#include "box.glsl"
+#include "random.glsl"
 
-vec2 intersectBox(vec3 rayPos, vec3 invRayDir, vec3 boxMin, vec3 boxMax) {
-    vec3 tMin = (boxMin - rayPos) * invRayDir;
-    vec3 tMax = (boxMax - rayPos) * invRayDir;
-
-    vec3 t1 = min(tMin, tMax);
-    vec3 t2 = max(tMin, tMax);
-
-    float tNear = max(max(t1.x, t1.y), t1.z);
-    float tFar  = min(min(t2.x, t2.y), t2.z);
-
-    return vec2(tNear, tFar);
-}
-
-// random stuff taken from https://www.shadertoy.com/view/tsBBWW
-const float pi = 3.14159265359f;
-const float twoPi = 2 * pi;
-
-uint wangHash(inout uint seed) {
-    seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
-    seed *= uint(9);
-    seed = seed ^ (seed >> 4);
-    seed *= uint(0x27d4eb2d);
-    seed = seed ^ (seed >> 15);
-    return seed;
-}
-
-float randomFloat(inout uint state) {
-    return float(wangHash(state)) / 4294967296.0;
-}
-
-vec3 randomUnitVector(inout uint state) {
-    float z = randomFloat(state) * 2.0f - 1.0f;
-    float a = randomFloat(state) * twoPi;
-    float r = sqrt(1.0f - z * z);
-    float x = r * cos(a);
-    float y = r * sin(a);
-    return vec3(x, y, z);
-}
-
-struct VoxelHit {
-    vec3 position;
-    vec3 normal;
+struct Material {
+    bool metal;
     vec3 albedo;
     vec3 emissive;
+};
+
+struct VoxelHit {
     bool hit;
-    bool metal;
+    vec3 position;
+    vec3 normal;
+    Material material;
 };
 
 bool inVoxelBuffer(ivec3 vx) {
@@ -104,7 +67,9 @@ void getVoxel(vec3 pos, inout VoxelHit hit) {
 
     if (voxelColorIndex != 0u) {
         hit.hit = true;
-        hit.albedo = decodeColor(palette[voxelColorIndex]).xyz;
+        hit.material.albedo = decodeColor(palette[voxelColorIndex]).xyz;
+        hit.material.emissive = vec3(0);
+        hit.material.metal = false;
     }
 }
 
@@ -126,7 +91,6 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
 
     VoxelHit hit;
     hit.hit = false;
-    hit.metal = false;
 
     for (int i = 0; i < MAX_TRACES; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
@@ -193,10 +157,10 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                 }
 
                 // Lighting needs to be implemented here
-                color += hit.emissive * throughPut;
-                throughPut *= hit.albedo;
+                color += hit.material.emissive * throughPut;
+                throughPut *= hit.material.albedo;
 
-                if (hit.metal) {
+                if (hit.material.metal) {
                     vec3 reflected = reflect(normalize(rayDir), hit.normal);
                     if (dot(reflected, hit.normal) > 0) {
                         rayPos = hit.position;
@@ -209,17 +173,14 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                     rayDir = hit.normal + randomUnitVector(rngState);
                 }
             } else {
-                // only for nice demo
-                color += skyColor(rayPos, rayDir) * throughPut;
+                color += skyColor(rayDir) * throughPut;
                 break;
             }
         }
 
         return vec4(color, depth);
     } else {
-        //return vec4(1, 1, 1, 0);
-        // for nice demo:
-        return vec4(skyColor(rayPos, rayDir), 0);
+        return vec4(skyColor(rayDir), 0);
     }
 }
 
@@ -227,10 +188,8 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
 void main() {
     ivec2 outputCoords = ivec2(gl_GlobalInvocationID.xy);
     ivec2 screenSize = imageSize(outputImage);
-    //vec2 screenCoords = vec2(outputCoords) / screenSize * 2 - 1;
 
-    // Initialize random seed
-    uint rngState = uint(outputCoords.x) * 1973 + uint(outputCoords.y) * 9277 + frameCount * 26699 | 1;
+    uint rngState = randomSeed(outputCoords, frameCount);
     vec2 rayNoise = vec2(randomFloat(rngState), randomFloat(rngState));
     vec2 screenCoords = (vec2(outputCoords) + rayNoise) / screenSize * 2 - 1;
 
