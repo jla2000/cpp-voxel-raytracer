@@ -162,13 +162,17 @@ int main(int argc, char *argv[]) {
         int invProjectionId = glGetUniformLocation(voxelProgram.id, "invProjection");
         int mapSizeId = glGetUniformLocation(voxelProgram.id, "mapSize");
         int frameCountId = glGetUniformLocation(voxelProgram.id, "frameCount");
-        int sampleCountId = glGetUniformLocation(voxelProgram.id, "sampleCount");
+        int numSamplesId = glGetUniformLocation(voxelProgram.id, "numSamples");
+        int numRayBouncesId = glGetUniformLocation(voxelProgram.id, "numRayBounces");
+        int maxDDADepthId = glGetUniformLocation(voxelProgram.id, "maxDDADepth");
 
         glUseProgram(voxelProgram.id);
         glUniform3uiv(mapSizeId, 1, &model.size[0]);
 
         unsigned int globalFrameCounter = 0;
-        unsigned int sampleCount = 1;
+        unsigned int numSamples = 1;
+        int numRayBounces = 3;
+        int maxDDADepth = 300;
 
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
@@ -192,12 +196,12 @@ int main(int argc, char *argv[]) {
                     camera.arcBallRotate(deltaX, deltaY, screenWidth, screenHeight);
                     lastCursorX = cursorX;
                     lastCursorY = cursorY;
-                    sampleCount = 1;
+                    numSamples = 1;
                 }
             }
 
             if (!denoise) {
-                sampleCount = 1;
+                numSamples = 1;
             }
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -205,7 +209,9 @@ int main(int argc, char *argv[]) {
             glUseProgram(voxelProgram.id);
 
             glUniform1ui(frameCountId, globalFrameCounter);
-            glUniform1ui(sampleCountId, sampleCount);
+            glUniform1ui(numSamplesId, numSamples);
+            glUniform1i(numRayBouncesId, numRayBounces);
+            glUniform1i(maxDDADepthId, maxDDADepth);
             glUniformMatrix4fv(invViewId, 1, false, &camera.m_invViewMat[0][0]);
             glUniformMatrix4fv(invCenteredViewId, 1, false, &camera.m_invCenteredMat[0][0]);
             glUniformMatrix4fv(invProjectionId, 1, false, &camera.m_invProjectionMat[0][0]);
@@ -215,7 +221,7 @@ int main(int argc, char *argv[]) {
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, voxelPaletteBufferId);
             glDispatchCompute(screenWidth / 10, screenHeight / 10, 1);
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
-            ++sampleCount;
+            ++numSamples;
 
             glUseProgram(quadProgram.id);
             glBindVertexArray(vertexArrayId);
@@ -224,8 +230,10 @@ int main(int argc, char *argv[]) {
             ImGui::Begin("Settings");
             ImGui::Text("Ms/Frame: %.2f", 1000.0f / io.Framerate);
             ImGui::Text("FPS: %.2f", ImGui::GetIO().Framerate);
-            ImGui::Text("Samples: %d", sampleCount - 1);
+            ImGui::Text("Samples: %d", numSamples - 1);
             ImGui::Checkbox("Accumulate Samples", &denoise);
+            ImGui::InputInt("Num Ray Bounces", &numRayBounces);
+            ImGui::InputInt("Max DDA Depth", &maxDDADepth);
             ImGui::End();
 
             ImGui::Render();

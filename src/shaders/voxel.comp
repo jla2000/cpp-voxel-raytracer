@@ -4,8 +4,6 @@
 // For fixing floating point errors
 #define EPSILON 0.0001
 #define INV_GAMMA 0.4545
-#define NUM_BOUNCES 3
-#define MAX_TRACES 300
 
 layout(local_size_x = 10, local_size_y = 10) in;
 layout(rgba32f, binding = 0) uniform image2D outputImage;
@@ -20,7 +18,9 @@ layout(binding = 1) buffer voxelPalette {
 
 uniform uvec3 mapSize;
 uniform uint frameCount;
-uniform uint sampleCount;
+uniform uint numSamples;
+uniform int numRayBounces;
+uniform int maxDDADepth;
 
 uniform mat4 invView;
 uniform mat4 invCenteredView;
@@ -92,7 +92,7 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
     VoxelHit hit;
     hit.hit = false;
 
-    for (int i = 0; i < MAX_TRACES; ++i) {
+    for (int i = 0; i < maxDDADepth; ++i) {
         if (inVoxelBuffer(ivec3(pos))) {
             getVoxel(pos, hit);
             if (hit.hit) {
@@ -149,7 +149,7 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         vec3 throughPut = vec3(1);
         float depth = 0;
 
-        for (int n = 0; n < NUM_BOUNCES; ++n) {
+        for (int n = 0; n < numRayBounces; ++n) {
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
                 if (n == 0) {
@@ -202,6 +202,6 @@ void main() {
     outputColor.xyz = pow(outputColor.xyz, vec3(INV_GAMMA));
 
     vec4 prevSample = imageLoad(outputImage, outputCoords);
-    outputColor = mix(prevSample, outputColor, (1 / float(sampleCount)));
+    outputColor = mix(prevSample, outputColor, (1 / float(numSamples)));
     imageStore(outputImage, outputCoords, outputColor);
 }
