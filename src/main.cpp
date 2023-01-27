@@ -1,7 +1,9 @@
 #include <array>
 #include <iostream>
-#include <sstream>
 
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
 #include <gl/glew.h>
 #include <glfw/glfw3.h>
 #include <glm/ext/matrix_transform.hpp>
@@ -37,6 +39,13 @@ static double lastCursorX = 0;
 static double lastCursorY = 0;
 
 static void mouseHandler(GLFWwindow* window, int button, int action, int code) {
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddMouseButtonEvent(button, action == GLFW_PRESS);
+
+    if (io.WantCaptureMouse) {
+        return;
+    }
+
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if (action == GLFW_PRESS) {
             dragging = true;
@@ -44,9 +53,12 @@ static void mouseHandler(GLFWwindow* window, int button, int action, int code) {
         } else if (action == GLFW_RELEASE) {
             dragging = false;
         }
-    } else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        denoise = !denoise;
     }
+}
+
+static void errorCallback(int error, const char* description)
+{
+    std::cerr << "Glfw Error " << error << ": " << description << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -55,6 +67,7 @@ int main(int argc, char *argv[]) {
             throw std::runtime_error("Failed to initialize Glfw");
         }
 
+        glfwSetErrorCallback(errorCallback);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -66,13 +79,25 @@ int main(int argc, char *argv[]) {
         }
         glfwMakeContextCurrent(window);
         glfwSwapInterval(0);
-
         glfwSetMouseButtonCallback(window, mouseHandler);
+        glfwMaximizeWindow(window);
 
         glewExperimental = true;
         if (glewInit() != GLEW_OK) {
             throw std::runtime_error("Failed to initialize Glew");
         }
+
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+
+        // Setup Dear ImGui style
+        ImGui::StyleColorsLight();
+
+        // Setup Platform/Renderer backends
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init("#version 440");
 
         ShaderProgram quadProgram({
             {"shaders/quad.vert", GL_VERTEX_SHADER},
@@ -142,28 +167,18 @@ int main(int argc, char *argv[]) {
         glUseProgram(voxelProgram.id);
         glUniform3uiv(mapSizeId, 1, &model.size[0]);
 
-        double previousFrame = glfwGetTime();
-        double currentFrame{};
-
         unsigned int globalFrameCounter = 0;
-        unsigned int localFrameCounter = 0;
         unsigned int sampleCount = 1;
 
         while (!glfwWindowShouldClose(window)) {
-            currentFrame = glfwGetTime();
+            glfwPollEvents();
+
+            // Start the Dear ImGui frame
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
             ++globalFrameCounter;
-            ++localFrameCounter;
-
-            if (currentFrame - previousFrame >=  1.0) {
-                std::ostringstream oss;
-                oss << "draft";
-                oss << " Fps: " << localFrameCounter;
-                oss << " Samples: " << (sampleCount - 1);
-
-                glfwSetWindowTitle(window, oss.str().c_str());
-                localFrameCounter = 0;
-                previousFrame = currentFrame;
-            }
 
             if (dragging) {
                 double cursorX;
@@ -206,9 +221,25 @@ int main(int argc, char *argv[]) {
             glBindVertexArray(vertexArrayId);
             glDrawArrays(GL_TRIANGLES, 0, quadVertices.size() / 3);
 
+            ImGui::Begin("Settings");
+            ImGui::Text("Ms/Frame: %.2f", 1000.0f / io.Framerate);
+            ImGui::Text("FPS: %.2f", ImGui::GetIO().Framerate);
+            ImGui::Text("Samples: %d", sampleCount - 1);
+            ImGui::Checkbox("Accumulate Samples", &denoise);
+            ImGui::End();
+
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
             glfwSwapBuffers(window);
-            glfwPollEvents();
         }
+
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+
+        glfwDestroyWindow(window);
+        glfwTerminate();
     } catch (std::exception &e) {
         std::cerr << e.what() << std::endl;
         return 1;
