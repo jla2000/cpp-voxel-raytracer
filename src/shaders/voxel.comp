@@ -167,8 +167,9 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                         // Apply albedo
                         color *= hit.material.albedo;
                     } else {
-                        // Sky reached, return all albedos * skycolor
-                        color *= skyColor(rayDir);
+                        // comment out to induce sky color effect
+                        // color *= skyColor(rayDir);
+
                         return vec4(color, depth);
                     }
                 }
