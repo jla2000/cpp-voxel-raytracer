@@ -69,7 +69,6 @@ vec4 decodeColor(uint32_t paletteColor) {
 void getVoxel(vec3 pos, inout VoxelHit hit) {
     uvec3 voxelPos = uvec3(pos);
     // FIXME: assuming mapSize is same all axis
-    uint size = 32;
     uint voxelIdx = voxelPos.z*mapSize.y*mapSize.x + voxelPos.y*mapSize.x + voxelPos.x;
     uint8_t voxelColorIndex = indices[voxelIdx];
 
@@ -94,6 +93,8 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
             if (hit.hit) {
                 hit.position = rayPos + (dda.dist - EPSILON) * rayDir;
                 hit.normal = dda.normal;
+                // Visualize normals
+                //hit.material.albedo = abs(hit.normal);
                 break;
             }
         }
