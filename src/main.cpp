@@ -81,8 +81,7 @@ static void errorCallback(int error, const char* description)
 
 int main(int argc, char *argv[]) {
     try {
-        Model model = loadVoxModel("assets/monu1.vox");
-        //Model model = loadVoxModel("C:\\Users\\janla\\Downloads\\voxel-model-master\\voxel-model-master\\vox\\monument\\monu1.vox");
+        Model model = loadVoxModel("assets/monu5.vox");
 
         if (!glfwInit()) {
             throw std::runtime_error("Failed to initialize Glfw");
