@@ -24,6 +24,15 @@ vec3 randomUnitVector(inout uint state) {
     return vec3(x, y, z);
 }
 
+vec3 randomInHemisphere(inout uint state, vec3 normal) {
+    vec3 inUnitSphere = randomUnitVector(state);
+    if (dot(inUnitSphere, normal) > 0) {
+        return inUnitSphere;
+    } else {
+        return -inUnitSphere;
+    }
+}
+
 uint randomSeed(vec2 outputCoords, uint frame) {
     return uint(outputCoords.x) * 1973 + uint(outputCoords.y) * 9277 + frameCount * 26699 | 1;
 }

@@ -222,6 +222,14 @@ int main(int argc, char *argv[]) {
                 glUniform1i(maxDDADepthId, maxDDADepth);
                 numSamples = 1;
             }
+            if (ImGui::InputFloat3("Camera Position", &camera.m_position[0], "%.2f", ImGuiInputTextFlags_EnterReturnsTrue)) {
+                camera.updateView();
+                numSamples = 1;
+            }
+            if (ImGui::InputFloat3("Camera Target", &camera.m_focusPoint[0], "%.2f", ImGuiInputTextFlags_EnterReturnsTrue)) {
+                camera.updateView();
+                numSamples = 1;
+            }
             ImGui::End();
             ImGui::Render();
 
