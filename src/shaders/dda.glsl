@@ -15,6 +15,12 @@ void initDDA(out DDA dda, vec3 rayPos, vec3 rayDir) {
 }
 
 void iterDDA(inout DDA dda) {
+    //bvec3 mask = lessThanEqual(dda.sideDist.xyz, min(dda.sideDist.yzx, dda.sideDist.zxy));
+    //dda.sideDist += vec3(mask) * dda.deltaDist;
+    //dda.pos += vec3(mask) * dda.rayStep;
+    //dda.normal = vec3(mask) * -dda.rayStep;
+    // FIXME: branchless dda normals
+
     if (dda.sideDist.x < dda.sideDist.y) {
         if (dda.sideDist.z < dda.sideDist.x) {
             dda.dist = dda.sideDist.z;
