@@ -117,9 +117,9 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         for (int n = 0; n < numRayBounces; ++n) {
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
-                if (n == 0) {
-                    depth = length(hit.position - origRayPos);
-                }
+                //if (n == 0) {
+                //    depth = length(hit.position - origRayPos);
+                //}
 
                 // Lighting needs to be implemented here
                 color += hit.material.emissive * throughPut;
