@@ -190,6 +190,8 @@ int main(int argc, char *argv[]) {
         int maxDDADepthId = glGetUniformLocation(voxelProgram.id, "maxDDADepth");
         int sunDirId = glGetUniformLocation(voxelProgram.id, "sunDir");
         int enableShadowsId = glGetUniformLocation(voxelProgram.id, "enableShadows");
+        int enableGlobalIlluminationId = glGetUniformLocation(voxelProgram.id, "enableGlobalIllumination");
+        int enableRayRandomizationId = glGetUniformLocation(voxelProgram.id, "enableRayRandomization");
         int shadowMultiplierId = glGetUniformLocation(voxelProgram.id, "shadowMultiplier");
 
         unsigned int globalFrameCounter = 0;
@@ -199,6 +201,8 @@ int main(int argc, char *argv[]) {
         bool sample = true;
         glm::vec3 sunDir {-100, 200, -100};
         bool enableShadows = true;
+        bool enableGlobalIllumination = false;
+        bool enableRayRandomization = true;
         float shadowMultiplier = 0.5;
 
         glUseProgram(voxelProgram.id);
@@ -207,6 +211,8 @@ int main(int argc, char *argv[]) {
         glUniform1i(numRayBouncesId, numRayBounces);
         glUniform3fv(sunDirId, 1, &sunDir[0]);
         glUniform1i(enableShadowsId, enableShadows);
+        glUniform1i(enableGlobalIlluminationId, enableGlobalIllumination);
+        glUniform1i(enableRayRandomizationId, enableRayRandomization);
         glUniform1f(shadowMultiplierId, shadowMultiplier);
 
         while (!glfwWindowShouldClose(window)) {
@@ -247,6 +253,14 @@ int main(int argc, char *argv[]) {
             ImGui::Text("FPS: %.2f", ImGui::GetIO().Framerate);
             ImGui::Text("Samples: %d", numSamples - 1);
             ImGui::Checkbox("Accumulate Samples", &sample);
+            if (ImGui::Checkbox("Enable Ray Randomization", &enableRayRandomization)) {
+                glUniform1i(enableRayRandomizationId, enableRayRandomization);
+                numSamples = 1;
+            }
+            if (ImGui::Checkbox("Enable Global Illumination", &enableGlobalIllumination)) {
+                glUniform1i(enableGlobalIlluminationId, enableGlobalIllumination);
+                numSamples = 1;
+            }
             if (ImGui::InputInt("Num Ray Bounces", &numRayBounces, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 glUniform1i(numRayBouncesId, numRayBounces);
                 numSamples = 1;
