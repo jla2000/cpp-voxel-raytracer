@@ -117,26 +117,16 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         for (int n = 0; n < numRayBounces; ++n) {
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
-                //if (n == 0) {
-                //    depth = length(hit.position - origRayPos);
-                //}
+                if (n == 0) {
+                    depth = length(hit.position - origRayPos);
+                }
 
                 // Lighting needs to be implemented here
                 color += hit.material.emissive * throughPut;
                 throughPut *= hit.material.albedo;
+                rayPos = hit.position;
+                rayDir = hit.normal + randomUnitVector(rngState);
 
-                if (hit.material.metal) {
-                    vec3 reflected = reflect(normalize(rayDir), hit.normal);
-                    if (dot(reflected, hit.normal) > 0) {
-                        rayPos = hit.position;
-                        rayDir = reflected;
-                    } else {
-                        return vec4(0, 0, 0, 1);
-                    }
-                } else {
-                    rayPos = hit.position;
-                    rayDir = hit.normal + randomUnitVector(rngState);
-                }
             } else {
                 color += skyColor(rayDir) * throughPut;
                 break;
