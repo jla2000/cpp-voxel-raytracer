@@ -89,7 +89,7 @@ Model loadVoxModel(const std::string& filename) {
     } __attribute__((packed));
 
     struct RGBAChunk {
-        int32_t palette[256];
+        uint32_t palette[256];
     } __attribute__((packed));
 
     struct Voxel {
