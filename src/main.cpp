@@ -34,7 +34,6 @@ const std::array<GLfloat, 18> quadUvs {
 };
 
 static bool dragging = false;
-static bool denoise = true;
 static double lastCursorX = 0;
 static double lastCursorY = 0;
 
@@ -166,13 +165,16 @@ int main(int argc, char *argv[]) {
         int numRayBouncesId = glGetUniformLocation(voxelProgram.id, "numRayBounces");
         int maxDDADepthId = glGetUniformLocation(voxelProgram.id, "maxDDADepth");
 
-        glUseProgram(voxelProgram.id);
-        glUniform3uiv(mapSizeId, 1, &model.size[0]);
-
         unsigned int globalFrameCounter = 0;
         unsigned int numSamples = 1;
         int numRayBounces = 3;
         int maxDDADepth = 300;
+        bool sample = false;
+
+        glUseProgram(voxelProgram.id);
+        glUniform3uiv(mapSizeId, 1, &model.size[0]);
+        glUniform1i(maxDDADepthId, maxDDADepth);
+        glUniform1i(numRayBouncesId, numRayBounces);
 
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
@@ -200,18 +202,29 @@ int main(int argc, char *argv[]) {
                 }
             }
 
-            if (!denoise) {
+            if (!sample) {
                 numSamples = 1;
             }
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
             glUseProgram(voxelProgram.id);
+
+            ImGui::Begin("Settings");
+            ImGui::Text("Ms/Frame: %.2f", 1000.0f / io.Framerate);
+            ImGui::Text("FPS: %.2f", ImGui::GetIO().Framerate);
+            ImGui::Text("Samples: %d", numSamples - 1);
+            ImGui::Checkbox("Accumulate Samples", &sample);
+            if (ImGui::InputInt("Num Ray Bounces", &numRayBounces, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                glUniform1i(numRayBouncesId, numRayBounces);
+            }
+            if (ImGui::InputInt("Max DDA Depth", &maxDDADepth, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                glUniform1i(maxDDADepthId, maxDDADepth);
+            }
+            ImGui::End();
+            ImGui::Render();
 
             glUniform1ui(frameCountId, globalFrameCounter);
             glUniform1ui(numSamplesId, numSamples);
-            glUniform1i(numRayBouncesId, numRayBounces);
-            glUniform1i(maxDDADepthId, maxDDADepth);
             glUniformMatrix4fv(invViewId, 1, false, &camera.m_invViewMat[0][0]);
             glUniformMatrix4fv(invCenteredViewId, 1, false, &camera.m_invCenteredMat[0][0]);
             glUniformMatrix4fv(invProjectionId, 1, false, &camera.m_invProjectionMat[0][0]);
@@ -227,18 +240,7 @@ int main(int argc, char *argv[]) {
             glBindVertexArray(vertexArrayId);
             glDrawArrays(GL_TRIANGLES, 0, quadVertices.size() / 3);
 
-            ImGui::Begin("Settings");
-            ImGui::Text("Ms/Frame: %.2f", 1000.0f / io.Framerate);
-            ImGui::Text("FPS: %.2f", ImGui::GetIO().Framerate);
-            ImGui::Text("Samples: %d", numSamples - 1);
-            ImGui::Checkbox("Accumulate Samples", &denoise);
-            ImGui::InputInt("Num Ray Bounces", &numRayBounces);
-            ImGui::InputInt("Max DDA Depth", &maxDDADepth);
-            ImGui::End();
-
-            ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
             glfwSwapBuffers(window);
         }
 
