@@ -37,11 +37,16 @@ static bool dragging = false;
 static double lastCursorX = 0;
 static double lastCursorY = 0;
 
-static void mouseHandler(GLFWwindow* window, int button, int action, int code) {
-    ImGuiIO& io = ImGui::GetIO();
-    io.AddMouseButtonEvent(button, action == GLFW_PRESS);
+Camera camera{
+        {0, 0, 0},
+        {0, 0, 0},
+        screenWidth,
+        screenHeight,
+};
 
-    if (io.WantCaptureMouse) {
+static void mouseHandler(GLFWwindow* window, int button, int action, int code) {
+    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, code);
+    if (ImGui::GetIO().WantCaptureMouse) {
         return;
     }
 
@@ -53,6 +58,20 @@ static void mouseHandler(GLFWwindow* window, int button, int action, int code) {
             dragging = false;
         }
     }
+}
+
+static void keyHandler(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+
+    if (ImGui::GetIO().WantCaptureKeyboard)
+        return;
+}
+
+static void charHandler(GLFWwindow* window, unsigned int codepoint) {
+    ImGui_ImplGlfw_CharCallback(window, codepoint);
+
+    if (ImGui::GetIO().WantCaptureKeyboard)
+        return;
 }
 
 static void errorCallback(int error, const char* description)
@@ -79,6 +98,8 @@ int main(int argc, char *argv[]) {
         glfwMakeContextCurrent(window);
         glfwSwapInterval(0);
         glfwSetMouseButtonCallback(window, mouseHandler);
+        glfwSetKeyCallback(window, keyHandler);
+        glfwSetCharCallback(window, charHandler);
         glfwMaximizeWindow(window);
 
         glewExperimental = true;
@@ -95,7 +116,7 @@ int main(int argc, char *argv[]) {
         ImGui::StyleColorsLight();
 
         // Setup Platform/Renderer backends
-        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplGlfw_InitForOpenGL(window, false);
         ImGui_ImplOpenGL3_Init("#version 440");
 
         ShaderProgram quadProgram({
@@ -107,12 +128,9 @@ int main(int argc, char *argv[]) {
         });
         Model model = loadVoxModel("assets/monu3.vox");
 
-        Camera camera{
-            glm::vec3{-1, 0.5f, -1} * glm::vec3{model.size},
-            {model.size.x/2, model.size.y/2, model.size.z/2},
-            screenWidth,
-            screenHeight,
-        };
+        camera.m_position = glm::vec3{-1, 0.5f, -1} * glm::vec3{model.size};
+        camera.m_focusPoint = {model.size.x/2, model.size.y/2, model.size.z/2};
+        camera.updateView();
 
         GLuint vertexArrayId;
         glGenVertexArrays(1, &vertexArrayId);
@@ -164,17 +182,26 @@ int main(int argc, char *argv[]) {
         int numSamplesId = glGetUniformLocation(voxelProgram.id, "numSamples");
         int numRayBouncesId = glGetUniformLocation(voxelProgram.id, "numRayBounces");
         int maxDDADepthId = glGetUniformLocation(voxelProgram.id, "maxDDADepth");
+        int sunDirId = glGetUniformLocation(voxelProgram.id, "sunDir");
+        int enableShadowsId = glGetUniformLocation(voxelProgram.id, "enableShadows");
+        int shadowMultiplierId = glGetUniformLocation(voxelProgram.id, "shadowMultiplier");
 
         unsigned int globalFrameCounter = 0;
         unsigned int numSamples = 1;
         int numRayBounces = 3;
         int maxDDADepth = 300;
-        bool sample = false;
+        bool sample = true;
+        glm::vec3 sunDir {100, 200, -100};
+        bool enableShadows = false;
+        float shadowMultiplier = 0.5;
 
         glUseProgram(voxelProgram.id);
         glUniform3uiv(mapSizeId, 1, &model.size[0]);
         glUniform1i(maxDDADepthId, maxDDADepth);
         glUniform1i(numRayBouncesId, numRayBounces);
+        glUniform3fv(sunDirId, 1, &sunDir[0]);
+        glUniform1i(enableShadowsId, enableShadows);
+        glUniform1f(shadowMultiplierId, shadowMultiplier);
 
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
@@ -228,6 +255,18 @@ int main(int argc, char *argv[]) {
             }
             if (ImGui::InputFloat3("Camera Target", &camera.m_focusPoint[0], "%.2f", ImGuiInputTextFlags_EnterReturnsTrue)) {
                 camera.updateView();
+                numSamples = 1;
+            }
+            if (ImGui::InputFloat3("Sun Direction", &sunDir[0], "%.2f", ImGuiInputTextFlags_EnterReturnsTrue)) {
+                glUniform3fv(sunDirId, 1, &sunDir[0]);
+                numSamples = 1;
+            }
+            if (ImGui::Checkbox("Enable Shadows", &enableShadows)) {
+                glUniform1i(enableShadowsId, enableShadows);
+                numSamples = 1;
+            }
+            if (ImGui::InputFloat("Shadow Multiplier", &shadowMultiplier, 0.1f, 0.2f, "%.2f", ImGuiInputTextFlags_EnterReturnsTrue)) {
+                glUniform1f(shadowMultiplierId, shadowMultiplier);
                 numSamples = 1;
             }
             ImGui::End();
