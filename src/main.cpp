@@ -216,9 +216,11 @@ int main(int argc, char *argv[]) {
             ImGui::Checkbox("Accumulate Samples", &sample);
             if (ImGui::InputInt("Num Ray Bounces", &numRayBounces, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 glUniform1i(numRayBouncesId, numRayBounces);
+                numSamples = 1;
             }
             if (ImGui::InputInt("Max DDA Depth", &maxDDADepth, 1, 100, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 glUniform1i(maxDDADepthId, maxDDADepth);
+                numSamples = 1;
             }
             ImGui::End();
             ImGui::Render();

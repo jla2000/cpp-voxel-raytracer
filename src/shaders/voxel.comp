@@ -29,6 +29,7 @@ uniform mat4 invProjection;
 #include "sky.glsl"
 #include "box.glsl"
 #include "random.glsl"
+#include "dda.glsl"
 
 struct Material {
     bool metal;
@@ -74,59 +75,23 @@ void getVoxel(vec3 pos, inout VoxelHit hit) {
 }
 
 VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
-    vec3 pos = floor(rayPos);
-    vec3 step = sign(rayDir);
-    vec3 tDelta = step / rayDir;
-
-    float tMaxX, tMaxY, tMaxZ;
-    vec3 fr = fract(rayPos);
-
-    tMaxX = tDelta.x * ((rayDir.x > 0) ? (1.0 - fr.x) : fr.x);
-    tMaxY = tDelta.y * ((rayDir.y > 0) ? (1.0 - fr.y) : fr.y);
-    tMaxZ = tDelta.z * ((rayDir.z > 0) ? (1.0 - fr.z) : fr.z);
-
-    vec3 norm;
-    vec3 hitPos;
-    float dist;
+    DDA dda;
+    initDDA(dda, rayPos, rayDir);
 
     VoxelHit hit;
     hit.hit = false;
 
     for (int i = 0; i < maxDDADepth; ++i) {
-        if (inVoxelBuffer(ivec3(pos))) {
-            getVoxel(pos, hit);
+        if (inVoxelBuffer(ivec3(dda.pos))) {
+            getVoxel(dda.pos, hit);
             if (hit.hit) {
-                hit.position = rayPos + (dist - EPSILON) * rayDir;
-                hit.normal = norm;
+                hit.position = rayPos + (dda.dist - EPSILON) * rayDir;
+                hit.normal = dda.normal;
                 break;
             }
         }
 
-        if (tMaxX < tMaxY) {
-            if (tMaxZ < tMaxX) {
-                dist = tMaxZ;
-                tMaxZ += tDelta.z;
-                pos.z += step.z;
-                norm = vec3(0, 0,-step.z);
-            } else {
-                dist = tMaxX;
-                tMaxX += tDelta.x;
-                pos.x += step.x;
-                norm = vec3(-step.x, 0, 0);
-            }
-        } else {
-            if (tMaxZ < tMaxY) {
-                dist = tMaxZ;
-                tMaxZ += tDelta.z;
-                pos.z += step.z;
-                norm = vec3(0, 0, -step.z);
-            } else {
-                dist = tMaxY;
-                tMaxY += tDelta.y;
-                pos.y += step.y;
-                norm = vec3(0, -step.y, 0);
-            }
-        }
+        iterDDA(dda);
     }
 
     return hit;
