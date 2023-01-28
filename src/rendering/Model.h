@@ -10,6 +10,7 @@ struct Model {
     glm::uvec3 size;
     std::array<uint32_t, 256> palette;
     std::vector<uint8_t> indices;
+    std::vector<uint8_t> solid;
 };
 
 Model loadExampleModel();

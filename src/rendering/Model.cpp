@@ -3,6 +3,7 @@
 #include <glm/geometric.hpp>
 #include <fstream>
 #include <iterator>
+#include <iostream>
 
 
 uint32_t defaultPalette[256] {
@@ -87,6 +88,17 @@ Model loadVoxModel(const std::string& filename) {
         int32_t numVoxels;
     } __attribute__((packed));
 
+    struct RGBAChunk {
+        int32_t palette[256];
+    } __attribute__((packed));
+
+    struct Voxel {
+        int8_t x;
+        int8_t y;
+        int8_t z;
+        int8_t i;
+    } __attribute__((packed));
+
     auto strEqual = [](const char* expected, const char* actual, size_t size) {
         return std::equal(expected, expected + size, actual);
     };
@@ -100,38 +112,58 @@ Model loadVoxModel(const std::string& filename) {
         throw std::runtime_error("Unexpected vox version");
     }
 
-    ChunkHeader* mainChunk = reinterpret_cast<ChunkHeader*>(header + 1);
-    if (!strEqual("MAIN", mainChunk->id, 4)) {
-        throw std::runtime_error("Main chunk not found");
-    }
-
-    ChunkHeader* sizeChunk = mainChunk + 1;
-    SIZEChunk* sizeData = reinterpret_cast<SIZEChunk*>(sizeChunk + 1);
-    ChunkHeader* xyziChunk = reinterpret_cast<ChunkHeader*>(sizeData + 1);
-    XYZIChunk* xyziData = reinterpret_cast<XYZIChunk*>(xyziChunk + 1);
-
     Model model;
-    model.size = {sizeData->sizeX, sizeData->sizeZ, sizeData->sizeY};
-    model.indices.resize(sizeData->sizeX * sizeData->sizeY * sizeData->sizeY);
+    bool paletteLoaded = false;
 
-    int8_t* voxel = reinterpret_cast<int8_t*>(xyziData + 1);
-    for (unsigned int i = 0; i < xyziData->numVoxels; ++i) {
-        int x = sizeData->sizeX - *voxel - 1;
-        ++voxel;
-        int z = *voxel;
-        ++voxel;
-        int y = *voxel;
-        ++voxel;
-        int c = *voxel;
-        ++voxel;
+    ChunkHeader* chunkHeader = reinterpret_cast<ChunkHeader*>(header + 1);
+    while (chunkHeader != (ChunkHeader*)&voxData[voxData.size()]) {
+        std::string chunkId(chunkHeader->id, chunkHeader->id + 4);
+        std::cout << "id: " << chunkId;
+        std::cout << ", content: " << chunkHeader->numChunkBytes;
+        std::cout << ", child: " << chunkHeader->numChildBytes << std::endl;
 
-        int voxelIndex = z * model.size.y * model.size.x + y * model.size.x + x;
-        model.indices[voxelIndex] = c;
+        if (chunkId == "MAIN") {
+            ++chunkHeader;
+            continue;
+        }
+
+        if (chunkId == "SIZE") {
+            SIZEChunk* sizeChunk = reinterpret_cast<SIZEChunk*>(chunkHeader + 1);
+            model.size = {sizeChunk->sizeX, sizeChunk->sizeZ, sizeChunk->sizeY};
+            model.indices.resize(sizeChunk->sizeX * sizeChunk->sizeY * sizeChunk->sizeY);
+            model.solid.resize(model.indices.size());
+        }
+
+        if (chunkId == "XYZI") {
+            XYZIChunk* xyziChunk = reinterpret_cast<XYZIChunk*>(chunkHeader + 1);
+            Voxel* voxel = reinterpret_cast<Voxel*>(xyziChunk + 1);
+
+            for (int i = 0; i < xyziChunk->numVoxels; ++i) {
+                int x = model.size.x - voxel->x - 1;
+                int y = voxel->z;
+                int z = voxel->y;
+
+                int voxelIndex = z * model.size.y * model.size.x + y * model.size.x + x;
+                model.indices[voxelIndex] = voxel->i;
+                model.solid[voxelIndex] = 1;
+                ++voxel;
+            }
+        }
+
+        if (chunkId == "RGBA") {
+            RGBAChunk* rgbaChunk = reinterpret_cast<RGBAChunk*>(chunkHeader + 1);
+            std::copy_n(rgbaChunk->palette, 256, model.palette.begin());
+            paletteLoaded = true;
+        }
+
+        char* rawPtr = reinterpret_cast<char*>(chunkHeader);
+        rawPtr += chunkHeader->numChunkBytes + sizeof(ChunkHeader);
+        chunkHeader = reinterpret_cast<ChunkHeader*>(rawPtr);
     }
 
-    //ChunkHeader* rgbaChunk = reinterpret_cast<ChunkHeader*>(voxel);
-
-    std::copy_n(defaultPalette, 256, model.palette.begin());
+    if (!paletteLoaded) {
+        std::copy_n(defaultPalette, 256, model.palette.begin());
+    }
 
     return model;
 }

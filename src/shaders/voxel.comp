@@ -16,6 +16,10 @@ layout(binding = 1) buffer voxelPalette {
     uint32_t palette[];
 };
 
+layout(binding = 2) buffer voxelSolid {
+    uint8_t solid[];
+};
+
 uniform uvec3 mapSize;
 uniform uint frameCount;
 uniform uint numSamples;
@@ -54,12 +58,12 @@ bool inVoxelBuffer(ivec3 vx) {
 }
 
 vec4 decodeColor(uint32_t paletteColor) {
-    return vec4(
-        (paletteColor >> 24) & 0xff,
-        (paletteColor >> 16) & 0xff,
-        (paletteColor >> 8) & 0xff,
-        (paletteColor >> 0) & 0xff
-    ) / 255;
+    uvec4 color;
+    color.x = paletteColor >> 24;
+    color.y = paletteColor >> 16;
+    color.z = paletteColor >> 8;
+    color.w = paletteColor;
+    return vec4(color & 0xff) / 255.0;
 }
 
 void getVoxel(vec3 pos, inout VoxelHit hit) {
@@ -69,7 +73,7 @@ void getVoxel(vec3 pos, inout VoxelHit hit) {
     uint voxelIdx = voxelPos.z*mapSize.y*mapSize.x + voxelPos.y*mapSize.x + voxelPos.x;
     uint8_t voxelColorIndex = indices[voxelIdx];
 
-    if (voxelColorIndex != 0u) {
+    if (solid[voxelIdx] != 0u) {
         hit.hit = true;
         hit.material.albedo = decodeColor(palette[voxelColorIndex]).xyz;
         hit.material.emissive = vec3(0);
@@ -157,7 +161,7 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                 throughPut *= lightMultiplier * hit.material.albedo;
 
                 rayPos = hit.position;
-                rayDir = hit.normal + randomUnitVector(rngState);
+                rayDir = hit.normal + randomInHemisphere(rngState, hit.normal);
             } else {
                 color += skyColor(rayDir) * throughPut;
                 break;

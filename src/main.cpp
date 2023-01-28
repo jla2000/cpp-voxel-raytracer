@@ -81,6 +81,9 @@ static void errorCallback(int error, const char* description)
 
 int main(int argc, char *argv[]) {
     try {
+        Model model = loadVoxModel("assets/monu1.vox");
+        //Model model = loadVoxModel("C:\\Users\\janla\\Downloads\\voxel-model-master\\voxel-model-master\\vox\\monument\\monu1.vox");
+
         if (!glfwInit()) {
             throw std::runtime_error("Failed to initialize Glfw");
         }
@@ -126,7 +129,6 @@ int main(int argc, char *argv[]) {
         ShaderProgram voxelProgram({
             {"shaders/voxel.comp", GL_COMPUTE_SHADER}
         });
-        Model model = loadVoxModel("assets/monu3.vox");
 
         camera.m_position = glm::vec3{-1, 0.5f, -1} * glm::vec3{model.size};
         camera.m_focusPoint = {model.size.x/2, model.size.y/2, model.size.z/2};
@@ -171,6 +173,11 @@ int main(int argc, char *argv[]) {
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, voxelPaletteBufferId);
         glBufferData(GL_SHADER_STORAGE_BUFFER, model.palette.size() * sizeof(uint32_t), model.palette.data(), GL_STATIC_DRAW);
 
+        GLuint voxelSolidBufferId;
+        glGenBuffers(1, &voxelSolidBufferId);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, voxelSolidBufferId);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, model.solid.size() * sizeof(uint8_t), model.solid.data(), GL_STATIC_DRAW);
+
         glViewport(0, 0, screenWidth, screenHeight);
         glClearColor(0, 1, 1, 1);
 
@@ -191,7 +198,7 @@ int main(int argc, char *argv[]) {
         int numRayBounces = 3;
         int maxDDADepth = 300;
         bool sample = true;
-        glm::vec3 sunDir {100, 200, -100};
+        glm::vec3 sunDir {-100, 200, -100};
         bool enableShadows = true;
         float shadowMultiplier = 0.5;
 
@@ -281,6 +288,7 @@ int main(int argc, char *argv[]) {
             glBindImageTexture(0, renderTextureId, 0, false, 0, GL_READ_WRITE, GL_RGBA32F);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, voxelIndexBufferId);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, voxelPaletteBufferId);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, voxelSolidBufferId);
             glDispatchCompute(screenWidth / 10, screenHeight / 10, 1);
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
             ++numSamples;
