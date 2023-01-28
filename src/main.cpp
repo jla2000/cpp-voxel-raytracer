@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
         int maxDDADepth = 300;
         bool sample = true;
         glm::vec3 sunDir {100, 200, -100};
-        bool enableShadows = false;
+        bool enableShadows = true;
         float shadowMultiplier = 0.5;
 
         glUseProgram(voxelProgram.id);

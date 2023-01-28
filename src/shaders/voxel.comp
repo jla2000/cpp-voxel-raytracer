@@ -143,13 +143,14 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
         for (int n = 0; n < numRayBounces; ++n) {
             hit = traceVoxel(rayPos, rayDir);
             if (hit.hit) {
+                float lightMultiplier = 1.0;
+
                 if (n == 0) {
                     depth = length(hit.position - origRayPos);
-                }
-
-                float lightMultiplier = 1.0;
-                if (enableShadows && pointIsShadowed(hit.position)) {
-                    lightMultiplier = shadowMultiplier;
+                    // TODO: check if its okay to only cast shadow ray for the first bounce
+                    if (enableShadows && pointIsShadowed(hit.position)) {
+                        lightMultiplier = shadowMultiplier;
+                    }
                 }
 
                 color += hit.material.emissive * throughPut;
