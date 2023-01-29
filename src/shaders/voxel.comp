@@ -93,7 +93,7 @@ VoxelHit traceVoxel(vec3 rayPos, vec3 rayDir) {
         if (inVoxelBuffer(ivec3(dda.pos))) {
             getVoxel(dda.pos, hit);
             if (hit.hit) {
-                hit.position = rayPos + (dda.dist - EPSILON) * rayDir;
+                hit.position = rayPos + dda.dist * rayDir;
                 hit.normal = dda.normal;
                 // Visualize normals
                 //hit.material.albedo = abs(hit.normal);
@@ -139,7 +139,7 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
     if (intersection.x <= intersection.y) {
         // Advance ray start to box
         if (intersection.x > 0) {
-            rayPos += rayDir * (intersection.x - EPSILON);
+            rayPos += rayDir * (intersection.x - 3*EPSILON);
         }
 
         VoxelHit hit;
@@ -161,6 +161,7 @@ vec4 traceRay(vec3 rayPos, vec3 rayDir, inout uint rngState) {
                 for (int bounce = 1; bounce < numRayBounces; ++bounce) {
                     rayPos = hit.position;
                     rayDir = hit.normal + randomInHemisphere(rngState, hit.normal);
+                    //rayDir = hit.normal + randomUnitVector(rngState);
                     hit = traceVoxel(rayPos, rayDir);
 
                     if (hit.hit) {

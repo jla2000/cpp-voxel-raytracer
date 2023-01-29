@@ -16,7 +16,7 @@ void initDDA(out DDA dda, vec3 rayPos, vec3 rayDir) {
 
 void iterDDA(inout DDA dda) {
     bvec3 mask = lessThanEqual(dda.sideDist.xyz, min(dda.sideDist.yzx, dda.sideDist.zxy));
-    dda.dist = length(vec3(mask) * dda.sideDist);
+    dda.dist = length(vec3(mask) * dda.sideDist) - 3*EPSILON;
     dda.sideDist += vec3(mask) * dda.deltaDist;
     dda.pos += vec3(mask) * dda.rayStep;
     dda.normal = vec3(mask) * - dda.rayStep;
