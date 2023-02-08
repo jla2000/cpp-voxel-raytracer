@@ -22,7 +22,11 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/ocornut/imgui.git
         GIT_TAG v1.89.2
 )
-FetchContent_MakeAvailable(glfw glew glm imgui)
+FetchContent_Declare(
+        stb
+        GIT_REPOSITORY https://github.com/nothings/stb.git
+)
+FetchContent_MakeAvailable(glfw glew glm imgui stb)
 
 set(DRAFT_LIBS glfw libglew_static glm)
 set(CMAKE_CXX_STANDARD 23)

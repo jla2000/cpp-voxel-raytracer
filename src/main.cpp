@@ -1,5 +1,6 @@
 #include <array>
 #include <iostream>
+#include <random>
 
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
@@ -11,6 +12,7 @@
 #include "rendering/Shader.h"
 #include "rendering/Camera.h"
 #include "rendering/Model.h"
+#include "rendering/Noise.h"
 
 const int screenWidth = 1920;
 const int screenHeight = 1010;
@@ -81,7 +83,7 @@ static void errorCallback(int error, const char* description)
 
 int main(int argc, char *argv[]) {
     try {
-        Model model = loadVoxModel("assets/monu5.vox");
+        Model model = loadVoxModel("assets/vox/monu5.vox");
 
         if (!glfwInit()) {
             throw std::runtime_error("Failed to initialize Glfw");
@@ -122,11 +124,11 @@ int main(int argc, char *argv[]) {
         ImGui_ImplOpenGL3_Init("#version 440");
 
         ShaderProgram quadProgram({
-            {"shaders/quad.vert", GL_VERTEX_SHADER},
-            {"shaders/quad.frag", GL_FRAGMENT_SHADER},
+            {"assets/shaders/quad.vert", GL_VERTEX_SHADER},
+            {"assets/shaders/quad.frag", GL_FRAGMENT_SHADER},
         });
         ShaderProgram voxelProgram({
-            {"shaders/voxel.comp", GL_COMPUTE_SHADER}
+            {"assets/shaders/voxel.comp", GL_COMPUTE_SHADER}
         });
 
         camera.m_position = glm::vec3{-1, 0.5f, -1} * glm::vec3{model.size};
@@ -155,12 +157,19 @@ int main(int argc, char *argv[]) {
         glBindBuffer(GL_ARRAY_BUFFER, uvBufferId);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
+        glActiveTexture(GL_TEXTURE0);
         GLuint renderTextureId;
         glGenTextures(1, &renderTextureId);
         glBindTexture(GL_TEXTURE_2D, renderTextureId);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glActiveTexture(GL_TEXTURE1);
+        Noise blueNoise{Noise::LoadBlueNoise("assets/noise/256_256")};
+        Noise whiteNoise{Noise::LoadWhiteNoise(1, 512)};
+
+        Noise* activeNoise = &whiteNoise;
 
         GLuint voxelIndexBufferId;
         glGenBuffers(1, &voxelIndexBufferId);
@@ -193,6 +202,8 @@ int main(int argc, char *argv[]) {
         int enableGlobalIlluminationId = glGetUniformLocation(voxelProgram.id, "enableGlobalIllumination");
         int enableRayRandomizationId = glGetUniformLocation(voxelProgram.id, "enableRayRandomization");
         int shadowMultiplierId = glGetUniformLocation(voxelProgram.id, "shadowMultiplier");
+        int randomnessId = glGetUniformLocation(voxelProgram.id, "randomness");
+        int noiseSizeId = glGetUniformLocation(voxelProgram.id, "noiseSize");
 
         unsigned int globalFrameCounter = 0;
         unsigned int numSamples = 1;
@@ -204,8 +215,11 @@ int main(int argc, char *argv[]) {
         bool enableGlobalIllumination = false;
         bool enableRayRandomization = true;
         float shadowMultiplier = 0.5;
+        std::independent_bits_engine<std::default_random_engine, 32, unsigned int> randomEngine{};
 
         glUseProgram(voxelProgram.id);
+        glUniform3i(randomnessId, 0, 0, 0);
+        glUniform3i(noiseSizeId, activeNoise->textureWidth, activeNoise->textureHeight, activeNoise->textureLayerCount);
         glUniform3uiv(mapSizeId, 1, &model.size[0]);
         glUniform1i(maxDDADepthId, maxDDADepth);
         glUniform1i(numRayBouncesId, numRayBounces);
@@ -244,6 +258,7 @@ int main(int argc, char *argv[]) {
             if (!sample) {
                 numSamples = 1;
             }
+
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             glUseProgram(voxelProgram.id);
@@ -289,9 +304,21 @@ int main(int argc, char *argv[]) {
                 glUniform1f(shadowMultiplierId, shadowMultiplier);
                 numSamples = 1;
             }
+            if (ImGui::RadioButton("White Noise", activeNoise == &whiteNoise)) {
+                activeNoise = &whiteNoise;
+                numSamples = 1;
+            }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("Blue Noise", activeNoise == &blueNoise)) {
+                activeNoise = &blueNoise;
+                numSamples = 1;
+            }
+            glm::uvec3 randomness{randomEngine(), randomEngine(), randomEngine()};
+
             ImGui::End();
             ImGui::Render();
 
+            glUniform3ui(randomnessId, randomEngine(), randomEngine(), randomEngine());
             glUniform1ui(frameCountId, globalFrameCounter);
             glUniform1ui(numSamplesId, numSamples);
             glUniformMatrix4fv(invViewId, 1, false, &camera.m_invViewMat[0][0]);
@@ -299,6 +326,7 @@ int main(int argc, char *argv[]) {
             glUniformMatrix4fv(invProjectionId, 1, false, &camera.m_invProjectionMat[0][0]);
 
             glBindImageTexture(0, renderTextureId, 0, false, 0, GL_READ_WRITE, GL_RGBA32F);
+            glBindImageTexture(1, activeNoise->textureId, 0, false, 0, GL_READ_ONLY, GL_RGBA32F);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, voxelIndexBufferId);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, voxelPaletteBufferId);
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, voxelSolidBufferId);

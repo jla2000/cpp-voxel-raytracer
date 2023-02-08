@@ -14,4 +14,4 @@ struct Model {
 };
 
 Model loadExampleModel();
-Model loadVoxModel(const std::string& filename);
+Model loadVoxModel(std::string const& filename);

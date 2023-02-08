@@ -24,6 +24,8 @@ vec3 randomUnitVector(inout uint state) {
     return vec3(x, y, z);
 }
 
+
+
 vec3 randomInHemisphere(inout uint state, vec3 normal) {
     vec3 inUnitSphere = randomUnitVector(state);
     if (dot(inUnitSphere, normal) > 0) {

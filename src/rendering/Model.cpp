@@ -5,6 +5,13 @@
 #include <iterator>
 #include <iostream>
 
+#ifdef __GNUC__
+#define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
+#endif
+
+#ifdef _MSC_VER
+#define PACK( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop))
+#endif
 
 uint32_t defaultPalette[256] {
         0x00000000, 0xffffffff, 0xffccffff, 0xff99ffff, 0xff66ffff, 0xff33ffff, 0xff00ffff, 0xffffccff, 0xffccccff, 0xff99ccff, 0xff66ccff, 0xff33ccff, 0xff00ccff, 0xffff99ff, 0xffcc99ff, 0xff9999ff,
@@ -35,7 +42,7 @@ Model loadExampleModel() {
             for (int x = 0; x < model.size.x; ++x) {
                 int index = (z * model.size.y * model.size.x + y * model.size.x + x);
 
-                const float sphereRadius = 14;
+                float const sphereRadius = 14;
                 if (glm::length(glm::vec3(x, y, z) - glm::vec3(16)) < sphereRadius){// && (x % 2 + y % 2 + z % 2 == 0)) {
                     model.indices[index] = rand() % 256;
                 } else if (y == 0 || x == model.size.x - 1 || z == model.size.z - 1) {
@@ -52,7 +59,7 @@ Model loadExampleModel() {
     return model;
 }
 
-Model loadVoxModel(const std::string& filename) {
+Model loadVoxModel(std::string const& filename) {
     std::ifstream ifs(filename, std::ios::in | std::ios::binary);
 
     if (!ifs.is_open()) {
@@ -67,37 +74,37 @@ Model loadVoxModel(const std::string& filename) {
     std::vector<char> voxData(fileSize);
     ifs.read(&voxData[0], fileSize);
 
-    struct VoxHeader {
+    PACK(struct VoxHeader {
         char id[4];
         int32_t version;
-    } __attribute__((packed));
+    });
 
-    struct ChunkHeader {
+    PACK(struct ChunkHeader {
         char id[4];
         int32_t numChunkBytes;
         int32_t numChildBytes;
-    } __attribute__((packed));
+    });
 
-    struct SIZEChunk {
+    PACK(struct SIZEChunk {
         int32_t sizeX;
         int32_t sizeY;
         int32_t sizeZ;
-    } __attribute__((packed));
+    });
 
-    struct XYZIChunk {
+    PACK(struct XYZIChunk {
         int32_t numVoxels;
-    } __attribute__((packed));
+    });
 
-    struct RGBAChunk {
+    PACK(struct RGBAChunk {
         uint32_t palette[256];
-    } __attribute__((packed));
+    });
 
-    struct Voxel {
+    PACK(struct Voxel {
         int8_t x;
         int8_t y;
         int8_t z;
         int8_t i;
-    } __attribute__((packed));
+    });
 
     auto strEqual = [](const char* expected, const char* actual, size_t size) {
         return std::equal(expected, expected + size, actual);
