@@ -83,7 +83,7 @@ static void errorCallback(int error, const char* description)
 
 int main(int argc, char *argv[]) {
     try {
-        Model model = loadVoxModel("assets/vox/monu5.vox");
+        Model model = loadVoxModel("assets/vox/menger.vox");
 
         if (!glfwInit()) {
             throw std::runtime_error("Failed to initialize Glfw");

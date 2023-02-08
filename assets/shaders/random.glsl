@@ -15,19 +15,20 @@ float randomFloat(inout uint state) {
     return float(wangHash(state)) / 4294967296.0;
 }
 
-vec3 randomUnitVector(inout uint state) {
-    float z = randomFloat(state) * 2.0f - 1.0f;
-    float a = randomFloat(state) * twoPi;
+vec3 randomUnitVector(ivec2 outputCoords, int offset) {
+    ivec3 noiseSize = imageSize(noiseArray);
+    vec2 noiseSample = imageLoad(noiseArray, ivec3(ivec3(outputCoords, offset) + randomness) % noiseSize).rg;
+
+    float z = noiseSample.r * 2.0f - 1.0f;
+    float a = noiseSample.g * twoPi;
     float r = sqrt(1.0f - z * z);
     float x = r * cos(a);
     float y = r * sin(a);
     return vec3(x, y, z);
 }
 
-
-
-vec3 randomInHemisphere(inout uint state, vec3 normal) {
-    vec3 inUnitSphere = randomUnitVector(state);
+vec3 randomInHemisphere(ivec2 outputCoords, int offset, vec3 normal) {
+    vec3 inUnitSphere = randomUnitVector(outputCoords, offset);
     if (dot(inUnitSphere, normal) > 0) {
         return inUnitSphere;
     } else {
