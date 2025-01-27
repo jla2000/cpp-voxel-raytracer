@@ -5,8 +5,8 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
-#include <gl/glew.h>
-#include <glfw/glfw3.h>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include <glm/ext/matrix_transform.hpp>
 
 #include "rendering/Shader.h"

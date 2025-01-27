@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 struct Noise {
     static Noise LoadBlueNoise(std::string const& imageDir);

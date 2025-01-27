@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include <gl/glew.h>
+#include <GL/glew.h>
 
 struct Shader {
     Shader(const std::string& filename, GLenum type);
