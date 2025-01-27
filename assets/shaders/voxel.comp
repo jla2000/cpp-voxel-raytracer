@@ -1,5 +1,5 @@
 #version 440 core
-#extension GL_NV_gpu_shader5 : enable
+#extension GL_NV_gpu_shader5 : require
 
 // For fixing floating point errors
 #define EPSILON 0.0001
